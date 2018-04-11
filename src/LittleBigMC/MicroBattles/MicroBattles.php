@@ -7,7 +7,6 @@ use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerInteractEvent;
 use pocketmine\event\player\PlayerDropItemEvent;
 use pocketmine\event\player\PlayerJoinEvent;
-use pocketmine\event\player\PlayerChatEvent;
 use pocketmine\event\player\PlayerQuitEvent;
 use pocketmine\command\CommandSender;
 use pocketmine\command\Command;
@@ -27,7 +26,6 @@ use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityLevelChangeEvent;
 use pocketmine\event\entity\EntityShootBowEvent;
-//use pocketmine\event\entity\EntityExplodeEvent;
 use pocketmine\tile\Chest;
 use pocketmine\inventory\ChestInventory;
 use pocketmine\utils\Color;
@@ -135,39 +133,39 @@ public function onQuit(PlayerQuitEvent $event)
  }
 }
 
-    public function onMove(PlayerMoveEvent $event)
-	{
-		$player = $event->getPlayer();
-		$level = $player->getLevel()->getFolderName();
-		if(in_array($level, $this->arenas))
-		{
-			if (!array_key_exists($player->getName(), $this->iswaiting)) //if the player is not waiting
-			{
-				if(array_key_exists($player->getName(), $this->isrestricted))
-				{
-				 $to = clone $event->getFrom();
-				 $to->yaw = $event->getTo()->yaw;
-				 $to->pitch = $event->getTo()->pitch;
-				 $event->setTo($to);
-				}
-			}
-		}
-	}
+public function onMove(PlayerMoveEvent $event)
+{
+ $player = $event->getPlayer();
+ $level = $player->getLevel()->getFolderName();
+ if(in_array($level, $this->arenas))
+ {
+  if (!array_key_exists($player->getName(), $this->iswaiting)) //if the player is not waiting
+  {
+   if(array_key_exists($player->getName(), $this->isrestricted))
+   {
+    $to = clone $event->getFrom();
+    $to->yaw = $event->getTo()->yaw;
+    $to->pitch = $event->getTo()->pitch;
+    $event->setTo($to);
+   }
+  }
+ }
+}
 
-	public function onShoot(EntityShootBowEvent $event)
-	{
-		$player = $event->getEntity();
-		$level = $player->getLevel()->getFolderName(); 
-		if($player instanceof Player && in_array($level,$this->arenas))
-		{
-			if (array_key_exists($player->getName(), $this->iswaiting) || array_key_exists($player->getName(), $this->isprotected))
-			{
-			 $event->setCancelled();
-			 return true;
-			}
-			$event->setCancelled(false);
-		}
-	}
+public function onShoot(EntityShootBowEvent $event)
+{
+ $player = $event->getEntity();
+ $level = $player->getLevel()->getFolderName(); 
+ if($player instanceof Player && in_array($level,$this->arenas))
+ {
+  if (array_key_exists($player->getName(), $this->iswaiting) || array_key_exists($player->getName(), $this->isprotected))
+  {
+   $event->setCancelled();
+   return true;
+  }
+  $event->setCancelled(false);
+ }
+}
 	
 	public function onBlockBreak(BlockBreakEvent $event)
 	{
