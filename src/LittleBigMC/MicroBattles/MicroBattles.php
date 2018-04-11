@@ -44,7 +44,7 @@ class MicroBattles extends PluginBase implements Listener
 	
 	public function onEnable()
 	{
-	$this->getLogger()->info(TextFormat::AQUA . "Micro§aBattles");
+	$this->getLogger()->info($this->prefix);
         $this->getServer()->getPluginManager()->registerEvents($this ,$this);
 	$this->economy = $this->getServer()->getPluginManager()->getPlugin("EconomyAPI");
         if(!empty($this->economy))
@@ -826,7 +826,7 @@ class RefreshSigns extends PluginTask {
 		foreach($tiles as $t) {
 			if($t instanceof Sign) {	
 				$text = $t->getText();
-				if($text[3]==$this->prefix)
+				if($text[3]== $this->public->prefix)
 				{
                     $namemap = str_replace("§f", "", $text[2]);
 					$arenalevel = $this->plugin->getServer()->getLevelByName( $namemap );
