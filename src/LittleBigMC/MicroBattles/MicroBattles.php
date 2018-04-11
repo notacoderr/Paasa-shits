@@ -35,104 +35,105 @@ use onebone\economyapi\EconomyAPI;
 use LittleBigMC\MicroBattles\Resetmap;
 use LittleBigMC\MicroBattles\RefreshArena;
 
-class MicroBattles extends PluginBase implements Listener {
+class MicroBattles extends PluginBase implements Listener
+{
 
         public $prefix = TextFormat::GRAY . "[" . TextFormat::AQUA . TextFormat::BOLD . "Micro" . TextFormat::GREEN . "Battles" . TextFormat::RESET . TextFormat::GRAY . "]";
-		public $mode = 0;
-		public $arenas = array();
-		public $currentLevel = "";
+	public $mode = 0;
+	public $arenas = array();
+	public $currentLevel = "";
         public $reds = [], $blues = [], $greens = [], $yellows = [], $iswaiting = [], $isprotected = [], $isrestricted = [];
 	
 	public function onEnable()
 	{
-		$this->getLogger()->info(TextFormat::AQUA . "Micro§aBattles");
+	$this->getLogger()->info(TextFormat::AQUA . "Micro§aBattles");
         $this->getServer()->getPluginManager()->registerEvents($this ,$this);
-		$this->economy = $this->getServer()->getPluginManager()->getPlugin("EconomyAPI");
+	$this->economy = $this->getServer()->getPluginManager()->getPlugin("EconomyAPI");
         if(!empty($this->economy))
         {
-            $this->api = EconomyAPI::getInstance();
+         $this->api = EconomyAPI::getInstance();
         }
 		
-		@mkdir($this->getDataFolder());
+	@mkdir($this->getDataFolder());
+	$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
 		
-		$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
-		
-		if($config->get("arenas")!=null)
-		{
-			$this->arenas = $config->get("arenas");
-		}
-            foreach($this->arenas as $lev)
-		{
-			$this->getServer()->loadLevel($lev);
-		}
-		
-		$items = array(
-			array(1,0,30),
-			array(1,0,20),
-			array(3,0,15),
-			array(3,0,25),
-			array(4,0,35),
-			array(4,0,15),
-			array(260,0,5),
-			array(261,0,1),
-			array(262,0,5),
-			array(267,0,1),
-			array(268,0,1),
-			array(272,0,1),
-			array(276,0,1),
-			array(283,0,1),
-			array(297,0,3),
-			array(298,0,1),
-			array(299,0,1),
-			array(300,0,1),
-			array(301,0,1),
-			array(303,0,1),
-			array(304,0,1),
-			array(310,0,1),
-			array(313,0,1),
-			array(314,0,1),
-			array(315,0,1),
-			array(316,0,1),
-			array(317,0,1),
-			array(320,0,4),
-			array(354,0,1),
-			array(364,0,4),
-			array(366,0,5),
-			array(391,0,5)
-			);
-			
-		if($config->get("chestitems")==null)
-		{
-			$config->set("chestitems",$items);
-		}
-		
-		$config->save();      
-		$statistic = new Config($this->getDataFolder() . "/statistic.yml", Config::YAML);
-		$statistic->save();
-		$this->getServer()->getScheduler()->scheduleRepeatingTask(new GameSender($this), 20);
-		$this->getServer()->getScheduler()->scheduleRepeatingTask(new RefreshSigns($this), 10);
-		
-        }
-        
-        public function getZip() {
-        Return new RefreshArena($this);
-        }
-    public function onJoin(PlayerJoinEvent $event)
+	if($config->get("arenas")!=null)
 	{
-		$player = $event->getPlayer();
-		if(in_array($player->getLevel()->getFolderName(), $this->arenas))
-		{
-		 $this->leaveArena($player);
-		}
+	 $this->arenas = $config->get("arenas");
 	}
-	public function onQuit(PlayerQuitEvent $event)
-    {
-        $player = $event->getPlayer();
-		if(in_array($player->getLevel()->getFolderName(), $this->arenas))
-		{
-		 $this->leaveArena($player);
-		}
-    }
+        foreach($this->arenas as $lev)
+	{
+	 $this->getServer()->loadLevel($lev);
+	}
+		
+	$items = array(
+		array(1,0,30),
+		array(1,0,20),
+		array(3,0,15),
+		array(3,0,25),
+		array(4,0,35),
+		array(4,0,15),
+		array(260,0,5),
+		array(261,0,1),
+		array(262,0,5),
+		array(267,0,1),
+		array(268,0,1),
+		array(272,0,1),
+		array(276,0,1),
+		array(283,0,1),
+		array(297,0,3),
+		array(298,0,1),
+		array(299,0,1),
+		array(300,0,1),
+		array(301,0,1),
+		array(303,0,1),
+		array(304,0,1),
+		array(310,0,1),
+		array(313,0,1),
+		array(314,0,1),
+		array(315,0,1),
+		array(316,0,1),
+		array(317,0,1),
+		array(320,0,4),
+		array(354,0,1),
+		array(364,0,4),
+		array(366,0,5),
+		array(391,0,5)
+	);
+			
+	if($config->get("chestitems")==null)
+	{
+	 $config->set("chestitems",$items);
+	}
+		
+	$config->save();
+	$this->getServer()->getScheduler()->scheduleRepeatingTask(new GameSender($this), 20);
+	$this->getServer()->getScheduler()->scheduleRepeatingTask(new RefreshSigns($this), 10);
+
+}
+
+public function getZip()
+{
+ Return new RefreshArena($this);
+}
+	
+public function onJoin(PlayerJoinEvent $event)
+{
+ $player = $event->getPlayer();
+ if(in_array($player->getLevel()->getFolderName(), $this->arenas))
+ {
+  $this->leaveArena($player);
+ }
+}
+
+public function onQuit(PlayerQuitEvent $event)
+{
+ $player = $event->getPlayer();
+ if(in_array($player->getLevel()->getFolderName(), $this->arenas))
+ {
+  $this->leaveArena($player);
+ }
+}
 
     public function onMove(PlayerMoveEvent $event)
 	{
