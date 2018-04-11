@@ -122,7 +122,7 @@ class MicroBattles extends PluginBase implements Listener {
 		$player = $event->getPlayer();
 		if(in_array($player->getLevel()->getFolderName(), $this->arenas))
 		{
-			$this->leaveArena($player);
+		 $this->leaveArena($player);
 		}
 	}
 	public function onQuit(PlayerQuitEvent $event)
@@ -130,7 +130,7 @@ class MicroBattles extends PluginBase implements Listener {
         $player = $event->getPlayer();
 		if(in_array($player->getLevel()->getFolderName(), $this->arenas))
 		{
-			$this->leaveArena($player);
+		 $this->leaveArena($player);
 		}
     }
 
@@ -144,10 +144,10 @@ class MicroBattles extends PluginBase implements Listener {
 			{
 				if(array_key_exists($player->getName(), $this->isrestricted))
 				{
-					$to = clone $event->getFrom();
-					$to->yaw = $event->getTo()->yaw;
-					$to->pitch = $event->getTo()->pitch;
-					$event->setTo($to);
+				 $to = clone $event->getFrom();
+				 $to->yaw = $event->getTo()->yaw;
+				 $to->pitch = $event->getTo()->pitch;
+				 $event->setTo($to);
 				}
 			}
 		}
@@ -161,8 +161,8 @@ class MicroBattles extends PluginBase implements Listener {
 		{
 			if (array_key_exists($player->getName(), $this->iswaiting) || array_key_exists($player->getName(), $this->isprotected))
 			{
-				$event->setCancelled();
-				return true;
+			 $event->setCancelled();
+			 return true;
 			}
 			$event->setCancelled(false);
 		}
@@ -176,8 +176,8 @@ class MicroBattles extends PluginBase implements Listener {
 		{
 			if (array_key_exists($player->getName(), $this->iswaiting) || array_key_exists($player->getName(), $this->isrestricted))
 			{
-				$event->setCancelled();
-				return true;
+			 $event->setCancelled();
+			 return true;
 			}
 			$event->setCancelled(false);
 		}
@@ -191,8 +191,8 @@ class MicroBattles extends PluginBase implements Listener {
 		{
 			if (array_key_exists($player->getName(), $this->iswaiting) || array_key_exists($player->getName(), $this->isrestricted)) 
 			{
-				$event->setCancelled();
-				return true;
+			 $event->setCancelled();
+			 return true;
 			}
 			$event->setCancelled(false);			
 		}
@@ -216,17 +216,14 @@ class MicroBattles extends PluginBase implements Listener {
 
 					if( $event->getDamage() >= $event->getEntity()->getHealth() )
 					{
-						$event->setCancelled();
-						
-						$jugador = $event->getEntity();
-						$asassin = $event->getDamager();
-						
-						$this->leaveArena($jugador);
-						
-						foreach($jugador->getLevel()->getPlayers() as $pl)
-						{
-							$pl->sendMessage("§l§f".$asassin->getDisplayName()." §c•==§f|§c=======> §f" . $jugador->getDisplayName());
-						}
+					 $event->setCancelled();
+					 $jugador = $event->getEntity();
+					 $asassin = $event->getDamager();
+					 $this->leaveArena($jugador);
+					 foreach($jugador->getLevel()->getPlayers() as $pl)
+					 {
+					  $pl->sendMessage("§l§f".$asassin->getDisplayName()." §c•==§f|§c=======> §f" . $jugador->getDisplayName());
+					 }
 					}	
 				}
 			}
