@@ -1,0 +1,22 @@
+name: MicroBattles
+main: LittleBigMC\MicroBattles\MicroBattles
+
+author: CodeBreak
+
+version: 2.3.3-indev
+
+api: [3.0.0-ALPHA11, 3.0.0-ALPHA12]
+
+commands:
+    mb:
+        usage: /mb <leave-make>
+        description: MicroBattles-Commands
+    lang:
+        usage: /lang <en>
+        description: SkyWars-English-Lang
+    rankmb:
+        usage: /rankmb
+        description: MicroBattles-Commands
+    mbstart:
+        usage: /mbstart
+        description: MicroBattles-Force start
