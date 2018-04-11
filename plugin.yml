@@ -11,12 +11,6 @@ commands:
     mb:
         usage: /mb <leave-make>
         description: MicroBattles-Commands
-    lang:
-        usage: /lang <en>
-        description: SkyWars-English-Lang
-    rankmb:
-        usage: /rankmb
-        description: MicroBattles-Commands
     mbstart:
         usage: /mbstart
         description: MicroBattles-Force start
