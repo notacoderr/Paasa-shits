@@ -286,7 +286,7 @@ public function onShoot(EntityShootBowEvent $event)
 						}
 					} else {
 						$player->sendMessage($this->prefix . " •> " . "/mb <make-leave> : Create Arena | Leave the game");
-						$player->sendMessage($this->prefix . " •> " . "/rankmb <Rank> <Player> : Set Rank(Ranks: Warrior, Warrior+, Archer, Pyromancer)");
+						//$player->sendMessage($this->prefix . " •> " . "/rankmb <Rank> <Player> : Set Rank(Ranks: Warrior, Warrior+, Archer, Pyromancer)");
 						$player->sendMessage($this->prefix . " •> " . "/mbstart : Start the game in 10 seconds");
 					}
 					return true;
@@ -621,7 +621,7 @@ public function onShoot(EntityShootBowEvent $event)
 				$text = $tile->getText();
 				if($text[3] == $this->prefix)
 				{
-					if($text[0]==TextFormat::AQUA . "[Join]")
+					if($text[0] == TextFormat::AQUA . "[Join]")
 					{
 						$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
 						$namemap = str_replace("§f", "", $text[2]);
@@ -826,7 +826,7 @@ class RefreshSigns extends PluginTask {
 		foreach($tiles as $t) {
 			if($t instanceof Sign) {	
 				$text = $t->getText();
-				if($text[3]== $this->public->prefix)
+				if($text[3]== $this->plugin->prefix)
 				{
                     $namemap = str_replace("§f", "", $text[2]);
 					$arenalevel = $this->plugin->getServer()->getLevelByName( $namemap );
@@ -908,13 +908,12 @@ class GameSender extends PluginTask
 								$aop = count($levelArena->getPlayers());
 								$colors = array();
 								//$tages = array();
-								//$colors = array();
 								$reds = $this->plugin->reds;
 								$blues = $this->plugin->blues; 
 								$yellows = $this->plugin->yellows;
 								$greens = $this->plugin->greens;
 
-								if($aop>=1)
+								if($aop >= 1)
 								{
 									if (count($reds) >= 1 && count($yellows) == 0 && count($greens) == 0 && count($blues) == 0)  //Red member
 									{
@@ -931,8 +930,53 @@ class GameSender extends PluginTask
 											$this->plugin->givePrize($pl);
 										}
 									}
+					/*yellows*/		if (count($reds) == 0 && count($yellows)>= 1 && count($greens) == 0 && count($blues) == 0)  //Red member
+									{
+										foreach($this->plugin->getServer()->getOnlinePlayers() as $plpl)
+										{
+											$plpl->sendMessage($this->prefix . " •> " . "§l§e[YELLOW] §l§bTeam is the Winner in the map §a" . $arena);
+										}
+										foreach($yellows as $name => $pl)
+										{
+											$pl->removeAllEffects();
+											$pl->setHealth(20);
+											$this->plugin->leaveArena($pl);
+											$this->plugin->api->addMoney($pl, mt_rand(320, 400));//bullshit
+											$this->plugin->givePrize($pl);
+										}
+									}
+					/*greens*/		if (count($reds) == 0 && count($yellows) == 0 && count($greens) >= 1 && count($blues) == 0)  //Red member
+									{
+										foreach($this->plugin->getServer()->getOnlinePlayers() as $plpl)
+										{
+											$plpl->sendMessage($this->plugin->prefix . " •> " . "§l§a[GREEN] §l§bTeam is the Winner in the map §a" . $arena);
+										}
+										foreach($greens as $name => $pl)
+										{
+											$pl->removeAllEffects();
+											$pl->setHealth(20);
+											$this->plugin->leaveArena($pl);
+											$this->plugin->api->addMoney($pl, mt_rand(320, 400));//bullshit
+											$this->plugin->givePrize($pl);
+										}
+									}
+									if (count($reds) == 0 && count($yellows) == 0 && count($greens) == 0 && count($blues) >= 1)  //Red member
+									{
+										foreach($this->plugin->getServer()->getOnlinePlayers() as $plpl)
+										{
+											$plpl->sendMessage($this->prefix . " •> " . "§l§b[BLUE] §l§bTeam is the Winner in the map §a" . $arena);
+										}
+										foreach($blues as $name => $pl)
+										{
+											$pl->removeAllEffects();
+											$pl->setHealth(20);
+											$this->plugin->leaveArena($pl);
+											$this->plugin->api->addMoney($pl, mt_rand(320, 400));//bullshit
+											$this->plugin->givePrize($pl);
+										}
+									}
 								}
-								if( ($aop>=2) )
+								if( $aop>=2 )
 								{
 									foreach($playersArena as $pl)
 									{
@@ -961,7 +1005,7 @@ class GameSender extends PluginTask
 											$pl->sendMessage("§e•>--------------------------------");
 											$pl->sendMessage("§e•>§cAttention: §6The game will start soon!");
 											$pl->sendMessage("§e•>§fUsing the map: §a" . $arena);
-											$pl->sendMessage("§e•>§binitiating §a15 §bseconds of mercy time");
+											$pl->sendMessage("§e•>§bYou will be assigned into a team...");
 											$pl->sendMessage("§e•>--------------------------------");
 										}
 									break;
@@ -986,7 +1030,7 @@ class GameSender extends PluginTask
 										$this->refillChests($levelArena);
 										foreach($playersArena as $pl)
 										{
-											$pl->sendMessage("§lAttention §r•> §7Chests have been refilled...");
+											$pl->sendMessage("§lAttention §r•> §7Chests has been refilled...");
 										}
 									break;
 									
@@ -1029,7 +1073,7 @@ class GameSender extends PluginTask
 								$config->set($arena . "PlayTime", $time);
 							}
 						} else {
-							if($timeToStart<=0)
+							if($timeToStart <= 0)
 							{
 								foreach($playersArena as $pl)
 								{
