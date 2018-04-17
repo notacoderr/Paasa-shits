@@ -212,7 +212,9 @@ public function onShoot(EntityShootBowEvent $event)
 					if(array_key_exists($a, $this->yellows) && array_key_exists($b, $this->yellows)) { $event->setCancelled(); return true; }
 					if(array_key_exists($a, $this->blues) && array_key_exists($b, $this->blues)) { $event->setCancelled(); return true; }
 					if(array_key_exists($a, $this->greens) && array_key_exists($b, $this->greens)) { $event->setCancelled(); return true; }
-
+					
+					$event->setCancelled(false);
+					
 					if( $event->getDamage() >= $event->getEntity()->getHealth() )
 					{
 					 $event->setCancelled();
@@ -401,7 +403,15 @@ public function onShoot(EntityShootBowEvent $event)
 				$this->cleanPlayer($player);
 				return true;
 			}
-        }
+		
+			if(in_array($to, $this->arenas))
+			{
+				if (!array_key_exists($player->getName(), $this->iswaiting)){
+					$player->sendMessage($this->prefix . "Please use the sign to join");
+					return $event->setCancelled();
+				}
+			}
+        	}
 	}
 	
 	private function cleanPlayer(Player $player)
@@ -623,6 +633,8 @@ public function onShoot(EntityShootBowEvent $event)
 				{
 					if($text[0] == TextFormat::AQUA . "[Join]")
 					{
+						$this->iswaiting[ $player->getName() ] = $namemap; //beta
+						
 						$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
 						$namemap = str_replace("§f", "", $text[2]);
 						$level = $this->getServer()->getLevelByName($namemap);
@@ -633,11 +645,10 @@ public function onShoot(EntityShootBowEvent $event)
 						
 						$player->teleport($spawn, 0, 0);
 						$player->getInventory()->clearAll();
-                        $player->removeAllEffects();
-                        $player->setHealth(20);
+						$player->removeAllEffects();
+						$player->setHealth(20);
 						$player->setGameMode(2);
 						
-						$this->iswaiting[ $player->getName() ] = $namemap; //beta
 						$this->isprotected[ $player->getName() ] = $namemap; //beta
 						return true;
 					} else {
