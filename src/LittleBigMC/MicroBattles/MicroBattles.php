@@ -633,10 +633,11 @@ public function onShoot(EntityShootBowEvent $event)
 				{
 					if($text[0] == TextFormat::AQUA . "[Join]")
 					{
-						$this->iswaiting[ $player->getName() ] = $namemap; //beta
-						
 						$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
 						$namemap = str_replace("§f", "", $text[2]);
+						
+						$this->iswaiting[ $player->getName() ] = $namemap; //beta
+						
 						$level = $this->getServer()->getLevelByName($namemap);
 						$thespawn = $config->get($namemap . "Lobby");
 						
