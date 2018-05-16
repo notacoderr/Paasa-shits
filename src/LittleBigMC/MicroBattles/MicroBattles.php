@@ -228,6 +228,17 @@ public function onShoot(EntityShootBowEvent $event)
 					}	
 				}
 			}
+		} else {
+			if($event->getEntity() instanceof Player)
+			{
+				$level = $event->getEntity()->getLevel()->getFolderName();
+				if(in_array($level, $this->arenas))
+				{
+					$a = $event->getEntity()->getName();
+					if(array_key_exists($a, $this->iswaiting) || array_key_exists($a, $this->isprotected)) { $event->setCancelled(); return true; }
+					$event->setCancelled(false);
+				}
+			}
 		}
 	}
 
@@ -731,7 +742,6 @@ public function onShoot(EntityShootBowEvent $event)
 							$player->sendMessage('•§c You are not eligible for this Class');
 						}
 					break;
-					default: $player->getInventory()->clearAll();
 				}
 				return true;
             }
@@ -739,7 +749,7 @@ public function onShoot(EntityShootBowEvent $event)
 		$form->setTitle(" §l§fMicro Battles - Classes");
 	
 		$form->addButton("§lFighter", 1, "https://cdn3.iconfinder.com/data/icons/minecraft-icons/128/Stone_Sword.png");
-        $form->addButton("§lMarksman", 1, "https://cdn4.iconfinder.com/data/icons/medieval-4/500/medieval-ancient-antique_16-128.png");
+        	$form->addButton("§lMarksman", 1, "https://cdn4.iconfinder.com/data/icons/medieval-4/500/medieval-ancient-antique_16-128.png");
 		$form->addButton("§lMiner", 1, "https://cdn3.iconfinder.com/data/icons/minecraft-icons/128/Iron_Pickaxe.png");
 		$form->addButton("§6§lChemist", 1, "https://cdn2.iconfinder.com/data/icons/brainy-icons-science/120/0920-lab-flask04-128.png");
 		$form->addButton("§6§lBomber", 1, "https://cdn3.iconfinder.com/data/icons/minecraft-icons/128/3D_Creeper.png");
@@ -1017,7 +1027,7 @@ class GameSender extends PluginTask
 											$pl->sendMessage("§e•>--------------------------------");
 											$pl->sendMessage("§e•>§cAttention: §6The game will start soon!");
 											$pl->sendMessage("§e•>§fUsing the map: §a" . $arena);
-											$pl->sendMessage("§e•>§bYou will be assigned into a team...");
+											#$pl->sendMessage("§e•>§bYou will be assigned into a team...");
 											$pl->sendMessage("§e•>--------------------------------");
 										}
 									break;
@@ -1026,11 +1036,11 @@ class GameSender extends PluginTask
 										$this->plugin->removerestrictriction($arena);
 										foreach($playersArena as $pl)
 										{
-											$pl->addTitle("§l§aGame Start","§l§fNo PVP for §a15 §fseconds, goodluck!");
+											$pl->addTitle("§l§aGame Start","§l§fNo PVP for §a20 §fseconds, goodluck!");
 										}
 									break;
 									
-									case 750:
+									case 740:
 										$this->plugin->removeprotection($arena);
 										foreach($playersArena as $pl)
 										{
