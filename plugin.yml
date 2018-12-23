@@ -1,11 +1,8 @@
 name: MicroBattles
 main: LittleBigMC\MicroBattles\MicroBattles
-
 author: CodeBreak
-
 version: 2.3.3-indev
-
-api: [3.0.0-ALPHA11, 3.0.0-ALPHA12]
+api: [3.0.0, 3.5.2, 4.0.0]
 
 commands:
     mb:
