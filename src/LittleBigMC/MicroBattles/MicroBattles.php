@@ -35,7 +35,7 @@ use LittleBigMC\MicroBattles\{
 class MicroBattles extends PluginBase implements Listener
 {
 
-        public $prefix = TextFormat::GRAY . "[" . TextFormat::AQUA . TextFormat::BOLD . "Micro" . TextFormat::GREEN . "Battles" . TextFormat::RESET . TextFormat::GRAY . "]";
+        public $prefix = TextFormat::BOLD . TextFormat::DARK_GRAY . "[" . TextFormat::AQUA . "Micro" . TextFormat::GREEN . "Battles" . TextFormat::DARK_GRAY . "]" . TextFormat::RESET . TextFormat::GRAY;
 	public $mode = 0;
 	public $arenas = array();
 	public $currentLevel = "";
@@ -104,8 +104,8 @@ class MicroBattles extends PluginBase implements Listener
 	}
 		
 	$config->save();
-	$this->getServer()->getScheduler()->scheduleRepeatingTask(new GameSender($this), 20);
-	$this->getServer()->getScheduler()->scheduleRepeatingTask(new RefreshSigns($this), 10);
+	$this->getScheduler()->scheduleRepeatingTask(new GameSender($this), 20);
+	$this->getScheduler()->scheduleRepeatingTask(new RefreshSigns($this), 10);
 
 }
 
@@ -222,7 +222,7 @@ public function onShoot(EntityShootBowEvent $event)
 					 $this->leaveArena($jugador);
 					 foreach($jugador->getLevel()->getPlayers() as $pl)
 					 {
-					  $pl->sendMessage("§l§f".$asassin->getDisplayName()." §c•==§f|§c=======> §f" . $jugador->getDisplayName());
+					  $pl->sendMessage("§f".$asassin->getDisplayName()." §c==§f|§c=======> §f" . $jugador->getDisplayName());
 					 }
 					}	
 				}
@@ -263,24 +263,24 @@ public function onShoot(EntityShootBowEvent $event)
 											array_push($this->arenas,$args[1]);
 											$this->currentLevel = $args[1];
 											$this->mode = 1;
-											$player->sendMessage($this->prefix . " •> " . "Touch to set player spawns");
+											$player->sendMessage($this->prefix . " Touch to set player spawns");
 											$player->setGamemode(1);
 											$player->teleport($this->getServer()->getLevelByName($args[1])->getSafeSpawn(),0,0);
 											$name = $args[1];
 											$this->getZip()->zip($player, $name);
 											return true;
 										} else {
-											$player->sendMessage($this->prefix . " •> ERROR missing world.");
+											$player->sendMessage($this->prefix . " ERROR missing world.");
 											return true;
 										}
 									}
 									else
 									{
-										$player->sendMessage($this->prefix . " •> " . "ERROR missing parameters.");
+										$player->sendMessage($this->prefix . " ERROR missing parameters.");
 										return true;
 									}
 							} else {
-								$player->sendMessage($this->prefix . " •> " . "Oh no! You are not OP.");
+								$player->sendMessage($this->prefix . " Oh no! You are not OP.");
 								return true;
 							}
 						}
@@ -293,20 +293,20 @@ public function onShoot(EntityShootBowEvent $event)
 								return true;
 							}
 						} else {
-							$player->sendMessage($this->prefix . " •> " . "Invalid command.");
+							$player->sendMessage($this->prefix . " Invalid command.");
 							return true;
 						}
 					} else {
-						$player->sendMessage($this->prefix . " •> " . "/mb <make-leave> : Create Arena | Leave the game");
+						$player->sendMessage($this->prefix . " /mb <make-leave> : Create Arena | Leave the game");
 						//$player->sendMessage($this->prefix . " •> " . "/rankmb <Rank> <Player> : Set Rank(Ranks: Warrior, Warrior+, Archer, Pyromancer)");
-						$player->sendMessage($this->prefix . " •> " . "/mbstart : Start the game in 10 seconds");
+						$player->sendMessage($this->prefix . " /mbstart : Start the game in 10 seconds");
 					}
 					return true;
 	
 				case "mbstart":
 				if($player->isOp())
 				{
-					$player->sendMessage($this->prefix . " •> " . "§aStarting in 10 seconds...");
+					$player->sendMessage($this->prefix . " §aStarting in 10 seconds...");
 					$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
 					$config->set("arenas",$this->arenas);
 					foreach($this->arenas as $arena)
@@ -417,7 +417,7 @@ public function onShoot(EntityShootBowEvent $event)
 			if(in_array($to, $this->arenas))
 			{
 				if (!array_key_exists($player->getName(), $this->iswaiting)){
-					$player->sendMessage($this->prefix . "Please use the sign to join");
+					$player->sendMessage($this->prefix . " Please use the sign to join");
 					return $event->setCancelled();
 				}
 			}
@@ -488,35 +488,35 @@ public function onShoot(EntityShootBowEvent $event)
 				$this->reds[$player->getName()] = $player;
 				$player->setNameTag("§l§c[RED]" . $player->getName());
 				$player->addTitle("§lPCP:§fMicro §bBattles", "§l§fYou are assigned into §l§c[RED]");
-				$player->sendMessage('§l•§c> /mb quit §7- to leave the arena');
+				$player->sendMessage('§b/mb quit §7- to leave the arena');
 				break;
 							
 			case 1: case 5: case 9:
 				$this->blues[$player->getName()] = $player;
 				$player->setNameTag("§l§9[BLUE]" . $player->getName());
 				$player->addTitle("§lPCP:§fMicro §bBattles", "§l§fYou are assigned into §l§9[BLUE]");
-				$player->sendMessage('§l•§c> /mb quit §7- to leave the arena');
+				$player->sendMessage('§b/mb quit §7- to leave the arena');
 				break;
 							
 			case 2: case 6: case 10:
 				$this->greens[$player->getName()] = $player;
 				$player->setNameTag("§l§a[GREEN]" . $player->getName());
 				$player->addTitle("§lPCP:§fMicro §bBattles", "§l§fYou are assigned into §l§a[GREEN]");
-				$player->sendMessage('§l•§c> /mb quit §7- to leave the arena');
+				$player->sendMessage('§b/mb quit §7- to leave the arena');
 				break;
 							
 			case 3: case 7: case 11:
 				$this->yellows[$player->getName()] = $player;
 				$player->setNameTag("§l§e[YELLOW]" . $player->getName());
 				$player->addTitle("§lPCP:§fMicro §bBattles", "§l§fYou are assigned into §l§e[YELLOW]");		
-				$player->sendMessage('§l•§c> /mb quit §7- to leave the arena');
+				$player->sendMessage('§b/mb quit §7- to leave the arena');
 				break;
 							
 			default:
-				$player->sendMessage($this->prefix . " •> " . "You can't join");
+				$player->sendMessage($this->prefix . " You can't join");
 		}
-		$player->getInventory()->setItem(0, Item::get(339, 69, 1)->setCustomName('§l§fClass Picker'));
-		$player->getInventory()->setItem(8, Item::get(339, 666, 1)->setCustomName('§l§fTap to leave'));
+		$player->getInventory()->setItem(0, Item::get(339, 69, 1)->setCustomName('§r§l§fClass Picker'));
+		$player->getInventory()->setItem(8, Item::get(339, 666, 1)->setCustomName('§r§l§fTap to leave'));
 		
 	}
 	
@@ -634,7 +634,7 @@ public function onShoot(EntityShootBowEvent $event)
 				$this->refreshArenas();
 				$this->currentLevel = "";
 				$this->mode = 0;
-				$player->sendMessage($this->prefix . " •> " . "Arena Registered!");
+				$player->sendMessage($this->prefix . " Arena Registered!");
 			}
 			else
 			{
@@ -663,7 +663,7 @@ public function onShoot(EntityShootBowEvent $event)
 						$this->isprotected[ $player->getName() ] = $namemap; //beta
 						return true;
 					} else {
-						$player->sendMessage($this->prefix . " •> " . "You can't join");
+						$player->sendMessage($this->prefix . " You can't join");
 					}
 				}
 			}
@@ -672,11 +672,11 @@ public function onShoot(EntityShootBowEvent $event)
 		{
 			$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
 			$config->set($this->currentLevel . "Spawn" . $this->mode, array($block->getX(),$block->getY()+1,$block->getZ()));
-			$player->sendMessage($this->prefix . " •> " . "Spawn " . $this->mode . " has been registered!");
+			$player->sendMessage($this->prefix . " Spawn " . $this->mode . " has been registered!");
 			$this->mode++;
 			if($this->mode == 13)
 			{
-				$player->sendMessage($this->prefix . " •> " . "Tap to set the lobby spawn");
+				$player->sendMessage($this->prefix . " Tap to set the lobby spawn");
 			}
 			$config->save();
 			return true;
@@ -685,11 +685,11 @@ public function onShoot(EntityShootBowEvent $event)
 		{
 			$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
 			$config->set($this->currentLevel . "Lobby", array($block->getX(),$block->getY()+1,$block->getZ()));
-			$player->sendMessage($this->prefix . " •> " . "Lobby has been registered!");
+			$player->sendMessage($this->prefix . " Lobby has been registered!");
 			$this->mode++;
 			if($this->mode == 14)
 			{
-				$player->sendMessage($this->prefix . " •> " . "Tap anywhere to continue");
+				$player->sendMessage($this->prefix . " Tap anywhere to continue");
 			}
 			$config->save();
 			return true;
@@ -699,7 +699,7 @@ public function onShoot(EntityShootBowEvent $event)
 		{
 			$level = $this->getServer()->getLevelByName($this->currentLevel);
 			$level->setSpawn = (new Vector3($block->getX(),$block->getY()+2,$block->getZ()));
-			$player->sendMessage($this->prefix . " •> " . "Touch a sign to register Arena!");
+			$player->sendMessage($this->prefix . " Touch a sign to register Arena!");
 			$spawn = $this->getServer()->getDefaultLevel()->getSafeSpawn();
 			$this->getServer()->getDefaultLevel()->loadChunk($spawn->getFloorX(), $spawn->getFloorZ());
 			$player->teleport($spawn,0,0);
@@ -790,7 +790,7 @@ public function onShoot(EntityShootBowEvent $event)
 	public function givePrize(Player $player)
 	{
 		$name = $player->getLowerCaseName();
-		$levelapi = $this->getServer()->getPluginManager()->getPlugin('LevelAPI');
+		$levelapi = $this->getServer()->getPluginManager()->getPlugin('CoreX2');
 		$xp = mt_rand(15, 21);
 		$levelapi->addVal($name, "exp", $xp);
 		$crate = $this->getServer()->getPluginManager()->getPlugin("CoolCrates")->getSessionManager()->getSession($player);
@@ -818,9 +818,9 @@ public function onShoot(EntityShootBowEvent $event)
 		$resp = $levelapi->getVal($name, "respect");
 		
 		$s = "";
-		$s .= "§l§f• Experience points: +§a".$xp."§r\n";
-		$s .= "§l§f• Bonus: +§e2§f common crate keys§r\n";
-		$s .= "§l§f• Current ELO: §b".$rank." ".$div." §f| RP: §7[§c".$resp."§7] §f•§r\n";
+		$s .= "§f Experience points: +§a".$xp."§r\n";
+		$s .= "§f Bonus: +§e2§f common crate keys§r\n";
+		$s .= "§f Current ELO: §b".$rank." ".$div." §f| RP: §7[§c".$resp."§7] §f•§r\n";
 		$s .= "§r\n";
         $form->setContent($s);
 		
@@ -831,8 +831,8 @@ public function onShoot(EntityShootBowEvent $event)
 	}
 }
 
-class RefreshSigns extends PluginTask {
-    public $prefix = TextFormat::GRAY . "[" . TextFormat::AQUA . TextFormat::BOLD . "Micro" . TextFormat::GREEN . "Battles" . TextFormat::RESET . TextFormat::GRAY . "]";
+class RefreshSigns extends Task {
+    public $prefix = TextFormat::BOLD . TextFormat::DARK_GRAY . "[" . TextFormat::AQUA . "Micro" . TextFormat::GREEN . "Battles" . TextFormat::DARK_GRAY . "]" . TextFormat::RESET . TextFormat::GRAY;
 	
 	public function __construct($plugin)
 	{
@@ -856,7 +856,7 @@ class RefreshSigns extends PluginTask {
 					$config = new Config($this->plugin->getDataFolder() . "/config.yml", Config::YAML);
 					if($config->get($namemap . "PlayTime") != 780)
 					{
-						$ingame = TextFormat::DARK_PURPLE . "[Running]";
+						$ingame = TextFormat::RED . "[Running]";
 					}
 					if( $playercount >= 12)
 					{
@@ -870,9 +870,9 @@ class RefreshSigns extends PluginTask {
 
 }
 
-class GameSender extends PluginTask
+class GameSender extends Task
 {
-    public $prefix = TextFormat::GRAY . "[" . TextFormat::AQUA . TextFormat::BOLD . "Micro" . TextFormat::GREEN . "Battles" . TextFormat::RESET . TextFormat::GRAY . "]";
+    public $prefix = TextFormat::BOLD . TextFormat::DARK_GRAY . "[" . TextFormat::AQUA . "Micro" . TextFormat::GREEN . "Battles" . TextFormat::DARK_GRAY . "]" . TextFormat::RESET . TextFormat::GRAY;
     
 	public function __construct($plugin) {
 		$this->plugin = $plugin;
@@ -940,7 +940,7 @@ class GameSender extends PluginTask
 									{
 										foreach($this->plugin->getServer()->getOnlinePlayers() as $plpl)
 										{
-											$plpl->sendMessage($this->prefix . " •> " . "§l§c[RED] §l§bTeam is the Winner in the map §a" . $arena);
+											$plpl->sendMessage($this->prefix . " §l§c[RED] §r§bTeam is the Winner in the map §a" . $arena);
 										}
 										foreach($reds as $name => $pl)
 										{
@@ -955,7 +955,7 @@ class GameSender extends PluginTask
 									{
 										foreach($this->plugin->getServer()->getOnlinePlayers() as $plpl)
 										{
-											$plpl->sendMessage($this->prefix . " •> " . "§l§e[YELLOW] §l§bTeam is the Winner in the map §a" . $arena);
+											$plpl->sendMessage($this->prefix . " §l§e[YELLOW] §r§bTeam is the Winner in the map §a" . $arena);
 										}
 										foreach($yellows as $name => $pl)
 										{
@@ -970,7 +970,7 @@ class GameSender extends PluginTask
 									{
 										foreach($this->plugin->getServer()->getOnlinePlayers() as $plpl)
 										{
-											$plpl->sendMessage($this->plugin->prefix . " •> " . "§l§a[GREEN] §l§bTeam is the Winner in the map §a" . $arena);
+											$plpl->sendMessage($this->plugin->prefix . " §l§a[GREEN] §r§bTeam is the Winner in the map §a" . $arena);
 										}
 										foreach($greens as $name => $pl)
 										{
@@ -985,7 +985,7 @@ class GameSender extends PluginTask
 									{
 										foreach($this->plugin->getServer()->getOnlinePlayers() as $plpl)
 										{
-											$plpl->sendMessage($this->prefix . " •> " . "§l§b[BLUE] §l§bTeam is the Winner in the map §a" . $arena);
+											$plpl->sendMessage($this->prefix . " §l§9[BLUE] §r§bTeam is the Winner in the map §a" . $arena);
 										}
 										foreach($blues as $name => $pl)
 										{
@@ -1023,11 +1023,11 @@ class GameSender extends PluginTask
 										$this->plugin->assignTeam($arena);
 										foreach($playersArena as $pl)
 										{
-											$pl->sendMessage("§e•>--------------------------------");
-											$pl->sendMessage("§e•>§cAttention: §6The game will start soon!");
-											$pl->sendMessage("§e•>§fUsing the map: §a" . $arena);
+											$pl->sendMessage("§7--------------------------------");
+											$pl->sendMessage("§e§cAttention: §6The game will start soon!");
+											$pl->sendMessage("§e§fUsing the map: §a" . $arena);
 											#$pl->sendMessage("§e•>§bYou will be assigned into a team...");
-											$pl->sendMessage("§e•>--------------------------------");
+											$pl->sendMessage("§7--------------------------------");
 										}
 									break;
 
@@ -1051,7 +1051,7 @@ class GameSender extends PluginTask
 										$this->refillChests($levelArena);
 										foreach($playersArena as $pl)
 										{
-											$pl->sendMessage("§lAttention §r•> §7Chests has been refilled...");
+											$pl->sendMessage("§l§aAttention §r: §7Chests has been refilled...");
 										}
 									break;
 									
@@ -1066,14 +1066,14 @@ class GameSender extends PluginTask
 										{
 											foreach($playersArena as $pl)
 											{
-												$pl->sendMessage($this->prefix . " •> " . $minutes . " minutes remaining");
+												$pl->sendMessage($this->prefix . $minutes . " minutes remaining");
 											}
 										}
 										if($time == 30 || $time == 15 || $time == 10 || $time ==5 || $time ==4 || $time ==3 || $time ==2 || $time == 1)
 										{
 											foreach($playersArena as $pl)
 											{
-												$pl->sendMessage($this->prefix . " •> " . $time . " seconds remaining");
+												$pl->sendMessage($this->prefix . $time . " seconds remaining");
 											}
 										}
 										if($time <= 0)
@@ -1100,7 +1100,7 @@ class GameSender extends PluginTask
 								{
 									foreach($this->plugin->getServer()->getOnlinePlayers() as $plpl)
 									{
-										$plpl->sendMessage($this->prefix . " •> ".$pl->getNameTag() . "§l§b won in map : §a" . $arena);
+										$plpl->sendMessage($this->prefix . $pl->getNameTag() . " §r§b won in map : §a" . $arena);
 									}
 									$pl->setHealth(20);
 									$this->plugin->leaveArena($pl);
