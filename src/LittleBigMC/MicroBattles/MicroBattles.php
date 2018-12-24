@@ -2,36 +2,35 @@
 namespace LittleBigMC\MicroBattles;
 
 use pocketmine\plugin\PluginBase;
-use pocketmine\scheduler\PluginTask;
+use pocketmine\scheduler\Task;
 use pocketmine\event\Listener;
-use pocketmine\event\player\PlayerInteractEvent;
-use pocketmine\event\player\PlayerDropItemEvent;
-use pocketmine\event\player\PlayerJoinEvent;
-use pocketmine\event\player\PlayerQuitEvent;
-use pocketmine\command\CommandSender;
-use pocketmine\command\Command;
-use pocketmine\utils\TextFormat;
-use pocketmine\utils\Config;
+use pocketmine\event\player\{
+	PlayerInteractEvent, PlayerDropItem, PlayerJoinEvent, PlayerQuitEvent
+};
+use pocketmine\command\{
+	CommandSender, Command
+};
+use pocketmine\utils\{
+	TextFormat, Config, Color
+};
 use pocketmine\math\Vector3;
 use pocketmine\level\Position;
 use pocketmine\Player;
 use pocketmine\tile\Sign;
 use pocketmine\level\Level;
 use pocketmine\item\Item;
-use pocketmine\event\block\BlockBreakEvent;
-use pocketmine\event\block\BlockPlaceEvent;
-use pocketmine\event\player\PlayerMoveEvent;
-use pocketmine\event\player\PlayerDeathEvent;
-use pocketmine\event\entity\EntityDamageEvent;
-use pocketmine\event\entity\EntityDamageByEntityEvent;
-use pocketmine\event\entity\EntityLevelChangeEvent;
-use pocketmine\event\entity\EntityShootBowEvent;
+use pocketmine\event\block\{
+	BlockBreakEvent, BlockPlaceEvent, PlayerMoveEvent, PlayerDeathEvent
+};
+use pocketmine\event\entity\{
+	EntityDamageEvent, EntityDamageByEntityEvent, EntityLevelChangeEvent, EntityShootBowEvent
+};
 use pocketmine\tile\Chest;
 use pocketmine\inventory\ChestInventory;
-use pocketmine\utils\Color;
 use onebone\economyapi\EconomyAPI;
-use LittleBigMC\MicroBattles\Resetmap;
-use LittleBigMC\MicroBattles\RefreshArena;
+use LittleBigMC\MicroBattles\{
+	Resetmap, RefreshArena
+};
 
 class MicroBattles extends PluginBase implements Listener
 {
