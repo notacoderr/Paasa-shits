@@ -303,7 +303,7 @@ class MicroBattles extends PluginBase implements Listener
 										{
 											$this->getServer()->loadLevel($args[1]);
 											$this->getServer()->getLevelByName($args[1])->loadChunk($this->getServer()->getLevelByName($args[1])->getSafeSpawn()->getFloorX(), $this->getServer()->getLevelByName($args[1])->getSafeSpawn()->getFloorZ());
-											array_push($this->arenas,$args[1]);
+											array_push($this->arenas, $args[1]);
 											$this->currentLevel = $args[1];
 											$this->mode = 1;
 											$player->sendMessage($this->prefix . " Touch to set player spawns");
@@ -748,9 +748,9 @@ class MicroBattles extends PluginBase implements Listener
 	
 	function givePrize(Player $player)
 	{
-		$levelapi = $this->getServer()->getPluginManager()->getPlugin('CoreX2');
+		$core = $this->getServer()->getPluginManager()->getPlugin('CoreX2');
 		$xp = mt_rand(15, 21);
-		$levelapi->data->addVal($player, "exp", $xp);
+		$core->data->addVal($player, "exp", $xp);
 		$crate = $this->getServer()->getPluginManager()->getPlugin("CoolCrates")->getSessionManager()->getSession($player);
 		$crate->addCrateKey("common.crate", 2);
 		
@@ -772,9 +772,9 @@ class MicroBattles extends PluginBase implements Listener
         });
 		
 		$form->setTitle(" §l§bMicro §fBattles : PCP");
-		$rank = $levelapi->data->getVal($player, "rank");
-		$div = $levelapi->data->getVal($player, "div");
-		$resp = $levelapi->data->getVal($player, "respect");
+		$rank = $core->data->getVal($player, "rank");
+		$div = $core->data->getVal($player, "div");
+		$resp = $core->data->getVal($player, "respect");
 		
 		$s = "";
 		$s .= "§f Experience points: +§a".$xp."§r\n";
