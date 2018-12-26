@@ -38,162 +38,183 @@ class MicroBattles extends PluginBase implements Listener
 
         public $prefix = TextFormat::BOLD . TextFormat::DARK_GRAY . "[" . TextFormat::AQUA . "Micro" . TextFormat::GREEN . "Battles" . TextFormat::DARK_GRAY . "]" . TextFormat::RESET . TextFormat::GRAY;
 	public $mode = 0;
-	public $arenas = array();
+	public $arenas = [];
 	public $currentLevel = "";
+	public $arenastage = [];
+	/*
+	1 - playing
+	2 - waiting
+	3 - protected
+	4 - restricted
+	*/                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
         public $reds = [], $blues = [], $greens = [], $yellows = [], $iswaiting = [], $isprotected = [], $isrestricted = [];
 	
-	public function onEnable()
+	public function onEnable() : void
 	{
-	$this->getLogger()->info($this->prefix);
-        $this->getServer()->getPluginManager()->registerEvents($this ,$this);
-	$this->economy = $this->getServer()->getPluginManager()->getPlugin("EconomyAPI");
-        if(!empty($this->economy))
-        {
-         $this->api = EconomyAPI::getInstance();
-        }
-		
-	@mkdir($this->getDataFolder());
-	$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
-		
-	if($config->get("arenas")!=null)
-	{
-	 $this->arenas = $config->get("arenas");
-	}
-        foreach($this->arenas as $lev)
-	{
-	 $this->getServer()->loadLevel($lev);
-	}
-		
-	$items = array(
-		array(1,0,30),
-		array(1,0,20),
-		array(3,0,15),
-		array(3,0,25),
-		array(4,0,35),
-		array(4,0,15),
-		array(260,0,5),
-		array(261,0,1),
-		array(262,0,5),
-		array(267,0,1),
-		array(268,0,1),
-		array(272,0,1),
-		array(276,0,1),
-		array(283,0,1),
-		array(297,0,3),
-		array(298,0,1),
-		array(299,0,1),
-		array(300,0,1),
-		array(301,0,1),
-		array(303,0,1),
-		array(304,0,1),
-		array(310,0,1),
-		array(313,0,1),
-		array(314,0,1),
-		array(315,0,1),
-		array(316,0,1),
-		array(317,0,1),
-		array(320,0,4),
-		array(354,0,1),
-		array(364,0,4),
-		array(366,0,5),
-		array(391,0,5)
-	);
-			
-	if($config->get("chestitems")==null)
-	{
-	 $config->set("chestitems",$items);
-	}
-		
-	$config->save();
-	$this->getScheduler()->scheduleRepeatingTask(new GameSender($this), 20);
-	$this->getScheduler()->scheduleRepeatingTask(new RefreshSigns($this), 10);
+		$this->getLogger()->info($this->prefix);
+		$this->getServer()->getPluginManager()->registerEvents($this ,$this);
+		$this->economy = $this->getServer()->getPluginManager()->getPlugin("EconomyAPI");
 
-}
+		if(!empty($this->economy))
+		{
+			$this->api = EconomyAPI::getInstance();
+		}
 
-public function getZip()
-{
- Return new RefreshArena($this);
-}
+		@mkdir($this->getDataFolder());
+		$config = new Config($this->getDataFolder() . "config.yml", Config::YAML);
+		
+		$this->saveResource("items.yml");
+		$itemconf = new Config($this->getDataFolder() . "items.yml", CONFIG::YAML);
+
+		if( $config->get("arenas") != null )
+		{
+			$this->arenas = $config->get("arenas");
+		}
+
+		foreach($this->arenas as $lev)
+		{
+			$this->getServer()->loadLevel($lev);
+		}
+		
+		$items = $itemconf->getAll();
+			/*array(
+			array(1,0,30),
+			array(1,0,20),
+			array(3,0,15),
+			array(3,0,25),
+			array(4,0,35),
+			array(4,0,15),
+			array(260,0,5),
+			array(261,0,1),
+			array(262,0,5),
+			array(267,0,1),
+			array(268,0,1),
+			array(272,0,1),
+			array(276,0,1),
+			array(283,0,1),
+			array(297,0,3),
+			array(298,0,1),
+			array(299,0,1),
+			array(300,0,1),
+			array(301,0,1),
+			array(303,0,1),
+			array(304,0,1),
+			array(310,0,1),
+			array(313,0,1),
+			array(314,0,1),
+			array(315,0,1),
+			array(316,0,1),
+			array(317,0,1),
+			array(320,0,4),
+			array(354,0,1),
+			array(364,0,4),
+			array(366,0,5),
+			array(391,0,5)
+		);*/
+
+		if( $config->get("chestitems") == null )
+		{
+			$config->set( "chestitems" , $items);
+		}
+
+		$config->save();
+		$this->getScheduler()->scheduleRepeatingTask(new GameSender($this), 20);
+		$this->getScheduler()->scheduleRepeatingTask(new RefreshSigns($this), 10);
+
+	}
+
+	function getZip()
+	{
+ 		return new RefreshArena($this);
+	}
 	
-public function onJoin(PlayerJoinEvent $event)
-{
- $player = $event->getPlayer();
- if(in_array($player->getLevel()->getFolderName(), $this->arenas))
- {
-  $this->leaveArena($player);
- }
-}
-
-public function onQuit(PlayerQuitEvent $event)
-{
- $player = $event->getPlayer();
- if(in_array($player->getLevel()->getFolderName(), $this->arenas))
- {
-  $this->leaveArena($player);
- }
-}
-
-public function onMove(PlayerMoveEvent $event)
-{
- $player = $event->getPlayer();
- $level = $player->getLevel()->getFolderName();
- if(in_array($level, $this->arenas))
- {
-  if (!array_key_exists($player->getName(), $this->iswaiting)) //if the player is not waiting
-  {
-   if(array_key_exists($player->getName(), $this->isrestricted))
-   {
-    $to = clone $event->getFrom();
-    $to->yaw = $event->getTo()->yaw;
-    $to->pitch = $event->getTo()->pitch;
-    $event->setTo($to);
-   }
-  }
- }
-}
-
-public function onShoot(EntityShootBowEvent $event)
-{
- $player = $event->getEntity();
- $level = $player->getLevel()->getFolderName(); 
- if($player instanceof Player && in_array($level,$this->arenas))
- {
-  if (array_key_exists($player->getName(), $this->iswaiting) || array_key_exists($player->getName(), $this->isprotected))
-  {
-   $event->setCancelled();
-   return true;
-  }
-  $event->setCancelled(false);
- }
-}
-	
-	public function onBlockBreak(BlockBreakEvent $event)
+	function onJoin(PlayerJoinEvent $event)
 	{
-		$player = $event->getPlayer();
-		$level = $player->getLevel()->getFolderName(); 
+ 		$player = $event->getPlayer();
+ 		if(in_array($player->getLevel()->getFolderName(), $this->arenas))
+ 		{
+  			$this->leaveArena($player);
+ 		}
+	}
+
+	function onQuit(PlayerQuitEvent $event) : void
+	{
+		 $player = $event->getPlayer();
+		 if(in_array($player->getLevel()->getFolderName(), $this->arenas))
+		 {
+		 	$this->leaveArena($player);
+		 }
+	}
+	
+	function getLevelStage(string $levelname) : int
+	{
+		if(in_array($levename, $this->arenastage))
+		{
+			return $this->arenastage[$levelname];
+		}
+		return 0;
+	}
+
+	function onMove(PlayerMoveEvent $event) : void
+	{
+	 	$level = $event->getPlayer()->getLevel()->getFolderName();
+	 	if(in_array($level, $this->arenas))
+	 	{
+			if($this->getLevelStage($level) == 4)
+			{
+				$to = clone $event->getFrom();
+	    			$to->yaw = $event->getTo()->yaw;
+	    			$to->pitch = $event->getTo()->pitch;
+	    			$event->setTo($to);
+			}
+	 	}
+	}
+
+	function onShoot(EntityShootBowEvent $event) : void
+	{
+ 		$level = $event->getEntity()->getLevel()->getFolderName(); 
+ 		if($event->getEntity() instanceof Player && in_array($level,$this->arenas))
+ 		{
+			switch($this->getLevelStage($level))
+			{
+				case 2: case 3:
+					$event->setCancelled(true);
+				break;
+				default:
+					$event->setCancelled(false);
+			}
+ 		}
+	}
+	
+	function onBlockBreak(BlockBreakEvent $event) : void
+	{
+		$level = $event->getPlayer()->getLevel()->getFolderName(); 
 		if(in_array($level,$this->arenas))
 		{
-			if (array_key_exists($player->getName(), $this->iswaiting) || array_key_exists($player->getName(), $this->isrestricted))
+			switch($this->getLevelStage($level))
 			{
-			 $event->setCancelled();
-			 return true;
+				case 2: case 4:
+					$event->setCancelled(true);
+				break;
+				default:
+					$event->setCancelled(false);
 			}
-			$event->setCancelled(false);
 		}
 	}
 	
-	public function onBlockPlace(BlockPlaceEvent $event)
+	public function onBlockPlace(BlockPlaceEvent $event) : void
 	{
-		$player = $event->getPlayer();
-		$level = $player->getLevel()->getFolderName();
+		$level = $event->getPlayer()->getLevel()->getFolderName(); 
 		if(in_array($level,$this->arenas))
 		{
-			if (array_key_exists($player->getName(), $this->iswaiting) || array_key_exists($player->getName(), $this->isrestricted)) 
+			switch($this->getLevelStage($level))
 			{
-			 $event->setCancelled();
-			 return true;
+				case 2: case 4:
+					$event->setCancelled(true);
+				break;
+				default:
+					$event->setCancelled(false);
 			}
-			$event->setCancelled(false);			
 		}
 	}
 	
@@ -207,24 +228,24 @@ public function onShoot(EntityShootBowEvent $event)
 				if(in_array($level, $this->arenas))
 				{
 					$a = $event->getEntity()->getName(); $b = $event->getDamager()->getName();
-					if(array_key_exists($a, $this->iswaiting) || array_key_exists($a, $this->isprotected)) { $event->setCancelled(); return true; }
-					if(array_key_exists($a, $this->reds) && array_key_exists($b, $this->reds)) {  }
+					if($this->getLevelStage($level) == 2 || $this->getLevelStage($level) == 3 ) { $event->setCancelled(); return true; }
+					if(array_key_exists($a, $this->reds) && array_key_exists($b, $this->reds)) { $event->setCancelled(); return true; }
 					if(array_key_exists($a, $this->yellows) && array_key_exists($b, $this->yellows)) { $event->setCancelled(); return true; }
 					if(array_key_exists($a, $this->blues) && array_key_exists($b, $this->blues)) { $event->setCancelled(); return true; }
 					if(array_key_exists($a, $this->greens) && array_key_exists($b, $this->greens)) { $event->setCancelled(); return true; }
 					
-					$event->setCancelled(false);
+					//$event->setCancelled(false);
 					
 					if( $event->getDamage() >= $event->getEntity()->getHealth() )
 					{
-					 $event->setCancelled();
-					 $jugador = $event->getEntity();
-					 $asassin = $event->getDamager();
-					 $this->leaveArena($jugador);
-					 foreach($jugador->getLevel()->getPlayers() as $pl)
-					 {
-					  $pl->sendMessage("§f".$asassin->getDisplayName()." §c==§f|§c=======> §f" . $jugador->getDisplayName());
-					 }
+						$event->setCancelled(true);
+						$victim = $event->getEntity();
+						$killer = $event->getDamager();
+						$this->leaveArena($victim);
+						foreach($victim->getLevel()->getPlayers() as $pl)
+						{
+							$pl->sendMessage("§f". $killer->getDisplayName()." §c==§f|§c=======> §f" . $victim->getDisplayName());
+						}
 					}	
 				}
 			}
@@ -235,7 +256,7 @@ public function onShoot(EntityShootBowEvent $event)
 				if(in_array($level, $this->arenas))
 				{
 					$a = $event->getEntity()->getName();
-					if(array_key_exists($a, $this->iswaiting) || array_key_exists($a, $this->isprotected)) { $event->setCancelled(); return true; }
+					if($this->getLevelStage($level) == 2 || $this->getLevelStage($level) == 3) { $event->setCancelled(); return true; }
 					$event->setCancelled(false);
 				}
 			}
