@@ -6,7 +6,7 @@ use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\Task;
 use pocketmine\event\Listener;
 use pocketmine\event\player\{
-	PlayerInteractEvent, PlayerDropItem, PlayerJoinEvent, PlayerQuitEvent
+	PlayerInteractEvent, PlayerDropItem, PlayerJoinEvent, PlayerQuitEvent, PlayerMoveEvent, PlayerDeathEvent
 };
 use pocketmine\command\{
 	CommandSender, Command
@@ -21,7 +21,7 @@ use pocketmine\tile\Sign;
 use pocketmine\level\Level;
 use pocketmine\item\Item;
 use pocketmine\event\block\{
-	BlockBreakEvent, BlockPlaceEvent, PlayerMoveEvent, PlayerDeathEvent
+	BlockBreakEvent, BlockPlaceEvent
 };
 use pocketmine\event\entity\{
 	EntityDamageEvent, EntityDamageByEntityEvent, EntityLevelChangeEvent, EntityShootBowEvent
@@ -254,7 +254,7 @@ class MicroBattles extends PluginBase implements Listener
 					$killer = $event->getDamager();
 					if($this->getStatus($level) == 1)
 					{
-						if($this->getTeam($victim) == $this->getTeam($killer)
+						if($this->getTeam($victim) == $this->getTeam($killer))
 						{
 							$event->setCancelled();
 						} else  {
@@ -673,6 +673,7 @@ class MicroBattles extends PluginBase implements Listener
 					$this->mode = 101;
 				break;
 			}
+		}
 	}
 	
 	function sendClasses(Player $player)
