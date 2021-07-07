@@ -6,7 +6,7 @@ use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\Task;
 use pocketmine\event\Listener;
 use pocketmine\event\player\{
-	PlayerInteractEvent, PlayerDropItem, PlayerJoinEvent, PlayerQuitEvent
+	PlayerInteractEvent, PlayerDropItem, PlayerJoinEvent, PlayerQuitEvent, PlayerMoveEvent, PlayerDeathEvent
 };
 use pocketmine\command\{
 	CommandSender, Command
@@ -21,7 +21,7 @@ use pocketmine\tile\Sign;
 use pocketmine\level\Level;
 use pocketmine\item\Item;
 use pocketmine\event\block\{
-	BlockBreakEvent, BlockPlaceEvent, PlayerMoveEvent, PlayerDeathEvent
+	BlockBreakEvent, BlockPlaceEvent
 };
 use pocketmine\event\entity\{
 	EntityDamageEvent, EntityDamageByEntityEvent, EntityLevelChangeEvent, EntityShootBowEvent
@@ -36,168 +36,212 @@ use LittleBigMC\MicroBattles\{
 class MicroBattles extends PluginBase implements Listener
 {
 
-        public $prefix = TextFormat::BOLD . TextFormat::DARK_GRAY . "[" . TextFormat::AQUA . "Micro" . TextFormat::GREEN . "Battles" . TextFormat::DARK_GRAY . "]" . TextFormat::RESET . TextFormat::GRAY;
+	public $prefix = TextFormat::BOLD . TextFormat::DARK_GRAY . "[" . TextFormat::AQUA . "Micro" . TextFormat::GREEN . "Battles" . TextFormat::DARK_GRAY . "]" . TextFormat::RESET . TextFormat::GRAY;
 	public $mode = 0;
-	public $arenas = array();
 	public $currentLevel = "";
-        public $reds = [], $blues = [], $greens = [], $yellows = [], $iswaiting = [], $isprotected = [], $isrestricted = [];
 	
-	public function onEnable()
-	{
-	$this->getLogger()->info($this->prefix);
-        $this->getServer()->getPluginManager()->registerEvents($this ,$this);
-	$this->economy = $this->getServer()->getPluginManager()->getPlugin("EconomyAPI");
-        if(!empty($this->economy))
-        {
-         $this->api = EconomyAPI::getInstance();
-        }
-		
-	@mkdir($this->getDataFolder());
-	$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
-		
-	if($config->get("arenas")!=null)
-	{
-	 $this->arenas = $config->get("arenas");
-	}
-        foreach($this->arenas as $lev)
-	{
-	 $this->getServer()->loadLevel($lev);
-	}
-		
-	$items = array(
-		array(1,0,30),
-		array(1,0,20),
-		array(3,0,15),
-		array(3,0,25),
-		array(4,0,35),
-		array(4,0,15),
-		array(260,0,5),
-		array(261,0,1),
-		array(262,0,5),
-		array(267,0,1),
-		array(268,0,1),
-		array(272,0,1),
-		array(276,0,1),
-		array(283,0,1),
-		array(297,0,3),
-		array(298,0,1),
-		array(299,0,1),
-		array(300,0,1),
-		array(301,0,1),
-		array(303,0,1),
-		array(304,0,1),
-		array(310,0,1),
-		array(313,0,1),
-		array(314,0,1),
-		array(315,0,1),
-		array(316,0,1),
-		array(317,0,1),
-		array(320,0,4),
-		array(354,0,1),
-		array(364,0,4),
-		array(366,0,5),
-		array(391,0,5)
-	);
-			
-	if($config->get("chestitems")==null)
-	{
-	 $config->set("chestitems",$items);
-	}
-		
-	$config->save();
-	$this->getScheduler()->scheduleRepeatingTask(new GameSender($this), 20);
-	$this->getScheduler()->scheduleRepeatingTask(new RefreshSigns($this), 10);
-
-}
-
-public function getZip()
-{
- Return new RefreshArena($this);
-}
+	/*
+	ARENA STAGES
+	1 - playing
+	2 - waiting / protected
+	3 - restricted
+	*/            
 	
-public function onJoin(PlayerJoinEvent $event)
-{
- $player = $event->getPlayer();
- if(in_array($player->getLevel()->getFolderName(), $this->arenas))
- {
-  $this->leaveArena($player);
- }
-}
-
-public function onQuit(PlayerQuitEvent $event)
-{
- $player = $event->getPlayer();
- if(in_array($player->getLevel()->getFolderName(), $this->arenas))
- {
-  $this->leaveArena($player);
- }
-}
-
-public function onMove(PlayerMoveEvent $event)
-{
- $player = $event->getPlayer();
- $level = $player->getLevel()->getFolderName();
- if(in_array($level, $this->arenas))
- {
-  if (!array_key_exists($player->getName(), $this->iswaiting)) //if the player is not waiting
-  {
-   if(array_key_exists($player->getName(), $this->isrestricted))
-   {
-    $to = clone $event->getFrom();
-    $to->yaw = $event->getTo()->yaw;
-    $to->pitch = $event->getTo()->pitch;
-    $event->setTo($to);
-   }
-  }
- }
-}
-
-public function onShoot(EntityShootBowEvent $event)
-{
- $player = $event->getEntity();
- $level = $player->getLevel()->getFolderName(); 
- if($player instanceof Player && in_array($level,$this->arenas))
- {
-  if (array_key_exists($player->getName(), $this->iswaiting) || array_key_exists($player->getName(), $this->isprotected))
-  {
-   $event->setCancelled();
-   return true;
-  }
-  $event->setCancelled(false);
- }
-}
+	public $arenas = [], $arenastatus = [], $arenaplayers = [], $team = [];
 	
-	public function onBlockBreak(BlockBreakEvent $event)
+	public function onEnable() : void
+	{
+		$this->getLogger()->info($this->prefix);
+		$this->getServer()->getPluginManager()->registerEvents($this ,$this);
+		$this->economy = $this->getServer()->getPluginManager()->getPlugin("EconomyAPI");
+
+		if(!empty($this->economy))
+		{
+			$this->api = EconomyAPI::getInstance();
+		}
+
+		@mkdir($this->getDataFolder());
+		$config = new Config($this->getDataFolder() . "config.yml", Config::YAML);
+		
+		//$this->saveResource("items.yml");
+		//$itemconf = new Config($this->getDataFolder() . "items.yml", CONFIG::YAML);
+
+		if( $config->get("arenas") != null )
+		{
+			$this->arenas = $config->get("arenas");
+		}
+
+		foreach($this->arenas as $lev)
+		{
+			$this->getServer()->loadLevel($lev);
+			$this->arenaplayers[$lev] = [];
+			$this->arenastatus[$lev] = 2;
+		}
+		//$itemconf->getAll(); 
+		$items = array(
+			array(1,0,30),
+			array(1,0,20),
+			array(3,0,15),
+			array(3,0,25),
+			array(4,0,35),
+			array(4,0,15),
+			array(260,0,5),
+			array(261,0,1),
+			array(262,0,5),
+			array(267,0,1),
+			array(268,0,1),
+			array(272,0,1),
+			array(276,0,1),
+			array(283,0,1),
+			array(297,0,3),
+			array(298,0,1),
+			array(299,0,1),
+			array(300,0,1),
+			array(301,0,1),
+			array(303,0,1),
+			array(304,0,1),
+			array(310,0,1),
+			array(313,0,1),
+			array(314,0,1),
+			array(315,0,1),
+			array(316,0,1),
+			array(317,0,1),
+			array(320,0,4),
+			array(354,0,1),
+			array(364,0,4),
+			array(366,0,5),
+			array(391,0,5)
+		);
+
+		if( $config->get("chestitems") == null )
+		{
+			$config->set( "chestitems" , $items);
+		}
+
+		$config->save();
+		$this->getScheduler()->scheduleRepeatingTask(new GameSender($this), 20);
+		$this->getScheduler()->scheduleRepeatingTask(new RefreshSigns($this), 10);
+
+	}
+
+	function getZip()
+	{
+ 		return new RefreshArena($this);
+	}
+	
+	function onJoin(PlayerJoinEvent $event)
+	{
+ 		$player = $event->getPlayer();
+ 		if(in_array($player->getLevel()->getFolderName(), $this->arenas))
+ 		{
+  			$this->leaveArena($player);
+ 		}
+	}
+
+	function onQuit(PlayerQuitEvent $event) : void
 	{
 		$player = $event->getPlayer();
-		$level = $player->getLevel()->getFolderName(); 
-		if(in_array($level,$this->arenas))
+		if(in_array($player->getLevel()->getFolderName(), $this->arenas))
 		{
-			if (array_key_exists($player->getName(), $this->iswaiting) || array_key_exists($player->getName(), $this->isrestricted))
-			{
-			 $event->setCancelled();
-			 return true;
-			}
-			$event->setCancelled(false);
+			$this->leaveArena($player);
 		}
 	}
 	
-	public function onBlockPlace(BlockPlaceEvent $event)
+	function getStatus(string $levelname) : int
 	{
-		$player = $event->getPlayer();
-		$level = $player->getLevel()->getFolderName();
-		if(in_array($level,$this->arenas))
+		if(array_key_exists($levename, $this->arenastatus))
 		{
-			if (array_key_exists($player->getName(), $this->iswaiting) || array_key_exists($player->getName(), $this->isrestricted)) 
-			{
-			 $event->setCancelled();
-			 return true;
-			}
-			$event->setCancelled(false);			
+			return $this->arenastatus[$levelname];
+		}
+		return 0;
+	}
+	
+	function setStage(string $levelname, int $stage) : void
+	{
+		$this->arenastatus[$levelname] = $stage;
+	}
+
+	function getTeam(Player $player) : string
+	{
+		if(array_key_exists($player->getUniqueId(), $this->team))
+		{
+			$this->team[$player->getUniqueId()];
+		} else {
+			return "";
 		}
 	}
 	
-	public function onDamage(EntityDamageEvent $event)
+	function setSpectator(Player $player) : void
+	{
+		$this->team[$player->getUniqueId()] = "spectator";
+		$player->setGamemode(3);
+		$player->sendMessage("§lYou are a spectator.§r §7use /mb leave to exit.");
+	}
+
+	function onMove(PlayerMoveEvent $event) : void
+	{
+	 	$level = $event->getPlayer()->getLevel()->getFolderName();
+	 	if(in_array($level, $this->arenas))
+	 	{
+			if($this->getStatus($level) == 3)
+			{
+				$to = clone $event->getFrom();
+				$to->yaw = $event->getTo()->yaw;
+				$to->pitch = $event->getTo()->pitch;
+				$event->setTo($to);
+			}
+	 	}
+	}
+
+	function onShoot(EntityShootBowEvent $event) : void
+	{
+ 		$level = $event->getEntity()->getLevel()->getFolderName(); 
+ 		if($event->getEntity() instanceof Player && in_array($level, $this->arenas))
+ 		{
+			switch($this->getStatus($level))
+			{
+				case 2:
+					$event->setCancelled(true);
+				break;
+				default:
+					$event->setCancelled(false);
+			}
+ 		}
+	}
+	
+	function onBlockBreak(BlockBreakEvent $event) : void
+	{
+		$level = $event->getPlayer()->getLevel()->getFolderName(); 
+		if(in_array($level,$this->arenas))
+		{
+			switch($this->getStatus($level))
+			{
+				case 2: case 3:
+					$event->setCancelled(true);
+				break;
+				default:
+					$event->setCancelled(false);
+			}
+		}
+	}
+	
+	public function onBlockPlace(BlockPlaceEvent $event) : void
+	{
+		$level = $event->getPlayer()->getLevel()->getFolderName(); 
+		if(in_array($level,$this->arenas))
+		{
+			switch($this->getStatus($level))
+			{
+				case 2: case 3:
+					$event->setCancelled(true);
+				break;
+				default:
+					$event->setCancelled(false);
+			}
+		}
+	}
+	
+	public function onDamage(EntityDamageEvent $event) : void
 	{
 		if($event instanceof EntityDamageByEntityEvent)
 		{
@@ -206,26 +250,23 @@ public function onShoot(EntityShootBowEvent $event)
 				$level = $event->getEntity()->getLevel()->getFolderName();
 				if(in_array($level, $this->arenas))
 				{
-					$a = $event->getEntity()->getName(); $b = $event->getDamager()->getName();
-					if(array_key_exists($a, $this->iswaiting) || array_key_exists($a, $this->isprotected)) { $event->setCancelled(); return true; }
-					if(array_key_exists($a, $this->reds) && array_key_exists($b, $this->reds)) {  }
-					if(array_key_exists($a, $this->yellows) && array_key_exists($b, $this->yellows)) { $event->setCancelled(); return true; }
-					if(array_key_exists($a, $this->blues) && array_key_exists($b, $this->blues)) { $event->setCancelled(); return true; }
-					if(array_key_exists($a, $this->greens) && array_key_exists($b, $this->greens)) { $event->setCancelled(); return true; }
-					
-					$event->setCancelled(false);
-					
-					if( $event->getDamage() >= $event->getEntity()->getHealth() )
+					$victim = $event->getEntity();
+					$killer = $event->getDamager();
+					if($this->getStatus($level) == 1)
 					{
-					 $event->setCancelled();
-					 $jugador = $event->getEntity();
-					 $asassin = $event->getDamager();
-					 $this->leaveArena($jugador);
-					 foreach($jugador->getLevel()->getPlayers() as $pl)
-					 {
-					  $pl->sendMessage("§f".$asassin->getDisplayName()." §c==§f|§c=======> §f" . $jugador->getDisplayName());
-					 }
-					}	
+						if($this->getTeam($victim) == $this->getTeam($killer))
+						{
+							$event->setCancelled();
+						} else  {
+							if($event->getDamage() >= $event->getEntity()->getHealth())
+							{
+								$event->setCancelled();
+								$this->setSpectator($victim);
+								$message = "§f". $killer->getDisplayName(). " §c==§f|§c=======> §f". $victim->getDisplayName();
+								Server::getInstance()->broadcastMessage($message, $victim->getLevel()->getPlayers());
+							}
+						} 
+					}
 				}
 			}
 		} else {
@@ -234,16 +275,17 @@ public function onShoot(EntityShootBowEvent $event)
 				$level = $event->getEntity()->getLevel()->getFolderName();
 				if(in_array($level, $this->arenas))
 				{
-					$a = $event->getEntity()->getName();
-					if(array_key_exists($a, $this->iswaiting) || array_key_exists($a, $this->isprotected)) { $event->setCancelled(); return true; }
-					$event->setCancelled(false);
+					if($this->getStatus($level) <> 1)
+					{
+						$event->setCancelled(true);
+					}
 				}
 			}
 		}
 	}
 
-	public function onCommand(CommandSender $player, Command $cmd, $label, array $args) : bool {
-		//$lang = new Config($this->getDataFolder() . "/lang.yml", Config::YAML);
+	public function onCommand(CommandSender $player, Command $cmd, $label, array $args) : bool
+	{
 		if($player instanceof Player)
 		{
 			switch($cmd->getName())
@@ -261,7 +303,7 @@ public function onShoot(EntityShootBowEvent $event)
 										{
 											$this->getServer()->loadLevel($args[1]);
 											$this->getServer()->getLevelByName($args[1])->loadChunk($this->getServer()->getLevelByName($args[1])->getSafeSpawn()->getFloorX(), $this->getServer()->getLevelByName($args[1])->getSafeSpawn()->getFloorZ());
-											array_push($this->arenas,$args[1]);
+											array_push($this->arenas, $args[1]);
 											$this->currentLevel = $args[1];
 											$this->mode = 1;
 											$player->sendMessage($this->prefix . " Touch to set player spawns");
@@ -299,7 +341,6 @@ public function onShoot(EntityShootBowEvent $event)
 						}
 					} else {
 						$player->sendMessage($this->prefix . " /mb <make-leave> : Create Arena | Leave the game");
-						//$player->sendMessage($this->prefix . " •> " . "/rankmb <Rank> <Player> : Set Rank(Ranks: Warrior, Warrior+, Archer, Pyromancer)");
 						$player->sendMessage($this->prefix . " /mbstart : Start the game in 10 seconds");
 					}
 					return true;
@@ -313,7 +354,7 @@ public function onShoot(EntityShootBowEvent $event)
 					foreach($this->arenas as $arena)
 					{
 						$config->set($arena . "PlayTime", 780);
-						$config->set($arena . "StartTime", 10);
+						$config->set($arena . "StartTime", 11);
 					}
 					$config->save();
 				}
@@ -321,64 +362,24 @@ public function onShoot(EntityShootBowEvent $event)
 			}
 		} 
 	}
-	
-	public function removeprotection(string $arena)
-	{
-		foreach ($this->isprotected as $name => $area)
-		{
-			if(strtolower($area) == strtolower($arena))
-			{
-				unset($this->isprotected[$name]);
-			}
-		}
-	}
-	
-	public function removerestrictriction(string $arena)
-	{
-		foreach ($this->isrestricted as $name => $area)
-		{
-			if(strtolower($area) == strtolower($arena))
-			{
-				unset($this->isrestricted[$name]);
-			}
-		}
-	}
 
-	public function leaveArena(Player $player, $arena = null) : void
+	public function leaveArena(Player $player) : void
 	{
 		$spawn = $this->getServer()->getDefaultLevel()->getSafeSpawn();
-		$this->getServer()->getDefaultLevel()->loadChunk($spawn->getFloorX(), $spawn->getFloorZ());
-		$player->teleport($spawn , 0, 0);		
-		$player->setGameMode(2);
+		Server::getInstance()->getDefaultLevel()->loadChunk($spawn->getFloorX(), $spawn->getFloorZ());
+		$player->teleport($spawn , 0, 0);
 		$player->setFood(20);
 		$player->setHealth(20);
 		
-		if (array_key_exists($player->getName(), $this->isprotected)){
-			unset($this->isprotected[$player->getName()]);
-		}
-		if (array_key_exists($player->getName(), $this->iswaiting)){
-			unset($this->iswaiting[$player->getName()]);
-		}
-		if (array_key_exists($player->getName(), $this->isrestricted)){
-			unset($this->isrestricted[$player->getName()]);
-		}
-		if (array_key_exists($player->getName(), $this->reds)){
-			unset($this->reds[$player->getName()]);
-		}
-		if (array_key_exists($player->getName(), $this->yellows)){
-			unset($this->yellows[$player->getName()]);
-		}
-		if (array_key_exists($player->getName(), $this->blues)){
-			unset($this->blues[$player->getName()]);
-		}
-		if (array_key_exists($player->getName(), $this->greens)){
-			unset($this->greens[$player->getName()]);
+		if(array_key_exists($player->getUniqueId(), $this->team))
+		{
+			$this->team[ $player->getUniqueId() ];
 		}
 		
 		$this->cleanPlayer($player);
 	}
 
-	function onTeleport(EntityLevelChangeEvent $event)
+	function onTeleport(EntityLevelChangeEvent $event) : void
 	{
         if ($event->getEntity() instanceof Player) 
 		{
@@ -387,127 +388,90 @@ public function onShoot(EntityShootBowEvent $event)
 			$to = $event->getTarget()->getFolderName();
 			if(in_array($from, $this->arenas) && !in_array($to, $this->arenas))
 			{
-				$event->getEntity()->setGameMode(2);
-				
-				if (array_key_exists($player->getName(), $this->isprotected)){
-					unset($this->isprotected[$player->getName()]);
-				}
-				if (array_key_exists($player->getName(), $this->isrestricted)){
-					unset($this->isrestricted[$player->getName()]);
-				}
-				if (array_key_exists($player->getName(), $this->iswaiting)){
-					unset($this->iswaiting[$player->getName()]);
-				}
-				if (array_key_exists($player->getName(), $this->reds)){
-					unset($this->reds[$player->getName()]);
-				}
-				if (array_key_exists($player->getName(), $this->yellows)){
-					unset($this->yellows[$player->getName()]);
-				}
-				if (array_key_exists($player->getName(), $this->blues)){
-					unset($this->blues[$player->getName()]);
-				}
-				if (array_key_exists($player->getName(), $this->greens)){
-					unset($this->greens[$player->getName()]);
-				}
-				
-				$this->cleanPlayer($player);
-				return true;
+				$this->leaveArena($player);
 			}
 		
 			if(in_array($to, $this->arenas))
 			{
-				if (!array_key_exists($player->getName(), $this->iswaiting)){
-					$player->sendMessage($this->prefix . " Please use the sign to join");
-					return $event->setCancelled();
-				}
+				$this->setSpectator($player);
 			}
-        	}
+        }
 	}
 	
-	private function cleanPlayer(Player $player)
+	function cleanPlayer(Player $player) : void
 	{
 		$player->getInventory()->clearAll();
-		$i = Item::get(0);
-		
-		$player->getArmorInventory()->setHelmet($i);
-		$player->getArmorInventory()->setChestplate($i);
-		$player->getArmorInventory()->setLeggings($i);
-		$player->getArmorInventory()->setBoots($i);	
-		
-		$player->getArmorInventory()->sendContents($player);
+		$player->getArmorInventory()->clearAll();
 		$player->setNameTag( $this->getServer()->getPluginManager()->getPlugin('PureChat')->getNametag($player) );
 	}
 	
 	public function assignTeam($arena)
 	{
 		$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
-		$i = 0;
-		foreach($this->iswaiting as $name => $ar)
+		$level = Server::getInstance()->getLevelByName($arena);
+		$players = $this->arenaplayers[$arena];//$level->getAllPlayers();
+		shuffle($players);
+		$i = 1;
+		foreach($players as $player)
 		{
-			if(strtolower($ar) === strtolower($arena))
+			if(!array_key_exists($player->getUniqueId(), $this->team))
 			{
-				$player = $this->getServer()->getPlayer($name);
-				$level = $this->getServer()->getLevelByName($arena);
 				switch($i)
 				{
-					case 0: $thespawn = $config->get($arena . "Spawn1"); $color = 'r'; break;
-					case 1: $thespawn = $config->get($arena . "Spawn2"); $color = 'b'; break;
-					case 2: $thespawn = $config->get($arena . "Spawn3"); $color = 'g'; break;
-					case 3: $thespawn = $config->get($arena . "Spawn4"); $color = 'y'; break;
-					case 4: $thespawn = $config->get($arena . "Spawn5"); $color = 'r'; break;
-					case 5: $thespawn = $config->get($arena . "Spawn6"); $color = 'b'; break;
-					case 6: $thespawn = $config->get($arena . "Spawn7"); $color = 'g'; break;
-					case 7: $thespawn = $config->get($arena . "Spawn8"); $color = 'y'; break;
-					case 8: $thespawn = $config->get($arena . "Spawn9"); $color = 'r'; break;
-					case 9: $thespawn = $config->get($arena . "Spawn10"); $color = 'b'; break;
-					case 10: $thespawn = $config->get($arena . "Spawn11"); $color = 'g'; break;
-					case 11: $thespawn = $config->get($arena . "Spawn12"); $color = 'y'; break;
+					case 1: case 2: case 3:
+						$thespawn = $config->get($arena . "_red_center_spawn"); $this->joinTeam($player, $i, "red");
+					break;
+					case 4: case 5: case 6:
+						$thespawn = $config->get($arena . "_blue_center_spawn"); $this->joinTeam($player, $i, "blue");
+					break;
+					case 7: case 8: case 9: 
+						$thespawn = $config->get($arena . "_green_center_spawn"); $this->joinTeam($player, $i, "green");
+					break;
+					case 10: case 11: case 12:
+						$thespawn = $config->get($arena . "_yellow_center_spawn"); $this->joinTeam($player, $i, "yellow");
+					break;
 				}
-				$spawn = new Position($thespawn[0]+0.5 , $thespawn[1] ,$thespawn[2]+0.5 ,$level);
+				$spawn = new Position($thespawn[0] + 0.5 , $thespawn[1] , $thespawn[2] + 0.5 , $level);
 				$level->loadChunk($spawn->getFloorX(), $spawn->getFloorZ());
 				$player->teleport($spawn, 0, 0);
 				$player->setHealth(20);
 				$player->setGameMode(0);
-				
-				$this->sendColors($player, $color);
-				$this->joinTeam($player, $i);
-				
-				$this->isrestricted[ $player->getName() ] = $arena;
-				
-				unset( $this->iswaiting [ $name ] );
 				$i += 1;
 			}
 		}
 	}
 	
-	private function joinTeam(Player $player, $i)
+	private function joinTeam(Player $player, string $i, string $color)
 	{
 		switch($i)
 		{
-			case 0: case 4: case 8:
-				$this->reds[$player->getName()] = $player;
+			case 1: case 2: case 3:
+				$this->team[$player->getUniqueId()] = $color;
+				$this->sendColors($player, $color);
 				$player->setNameTag("§l§c[RED]" . $player->getName());
 				$player->addTitle("§lPCP:§fMicro §bBattles", "§l§fYou are assigned into §l§c[RED]");
 				$player->sendMessage('§b/mb quit §7- to leave the arena');
 				break;
 							
-			case 1: case 5: case 9:
-				$this->blues[$player->getName()] = $player;
+			case 4: case 5: case 6:
+				$this->team[$player->getUniqueId()] = $color;
+				$this->sendColors($player, $color);
 				$player->setNameTag("§l§9[BLUE]" . $player->getName());
 				$player->addTitle("§lPCP:§fMicro §bBattles", "§l§fYou are assigned into §l§9[BLUE]");
 				$player->sendMessage('§b/mb quit §7- to leave the arena');
 				break;
 							
-			case 2: case 6: case 10:
-				$this->greens[$player->getName()] = $player;
+			case 7: case 8: case 9:
+				$this->team[$player->getUniqueId()] = $color;
+				$this->sendColors($player, $color);
 				$player->setNameTag("§l§a[GREEN]" . $player->getName());
 				$player->addTitle("§lPCP:§fMicro §bBattles", "§l§fYou are assigned into §l§a[GREEN]");
 				$player->sendMessage('§b/mb quit §7- to leave the arena');
 				break;
 							
-			case 3: case 7: case 11:
-				$this->yellows[$player->getName()] = $player;
+			case 10: case 11: case 12:
+				$this->team[$player->getUniqueId()] = $color;
+				$this->sendColors($player, $color);
 				$player->setNameTag("§l§e[YELLOW]" . $player->getName());
 				$player->addTitle("§lPCP:§fMicro §bBattles", "§l§fYou are assigned into §l§e[YELLOW]");		
 				$player->sendMessage('§b/mb quit §7- to leave the arena');
@@ -529,28 +493,28 @@ public function onShoot(EntityShootBowEvent $event)
 		$d = Item::get(Item::LEATHER_BOOTS);
 		switch($color)
 		{
-			case 'r':
+			case 'red':
 				$a->setCustomColor(new Color(255,0,0));
 				$b->setCustomColor(new Color(255,0,0));
 				$c->setCustomColor(new Color(255,0,0));
 				$d->setCustomColor(new Color(255,0,0));
 			break;
 			
-			case 'b':
+			case 'blue':
 				$a->setCustomColor(new Color(0,0,255));
 				$b->setCustomColor(new Color(0,0,255));
 				$c->setCustomColor(new Color(0,0,255));
 				$d->setCustomColor(new Color(0,0,255));
 			break;
 			
-			case 'y':
+			case 'yellow':
 				$a->setCustomColor(new Color(255,255,0));
 				$b->setCustomColor(new Color(255,255,0));
 				$c->setCustomColor(new Color(255,255,0));
 				$d->setCustomColor(new Color(255,255,0));			
 			break;
 			
-			case 'g':
+			case 'green':
 				$a->setCustomColor(new Color(0,255,0));
 				$b->setCustomColor(new Color(0,255,0));
 				$c->setCustomColor(new Color(0,255,0));
@@ -629,16 +593,14 @@ public function onShoot(EntityShootBowEvent $event)
 		
 		if($tile instanceof Sign) 
 		{
-			if($this->mode == 26 )
+			if($this->mode == 101 )
 			{
-				$tile->setText(TextFormat::AQUA . "[Join]",TextFormat::YELLOW  . "0 / 12","§f".$this->currentLevel,$this->prefix);
+				$tile->setText(TextFormat::AQUA . "[Join]",TextFormat::YELLOW  . "0 / 12", "§f".$this->currentLevel, $this->prefix);
 				$this->refreshArenas();
 				$this->currentLevel = "";
 				$this->mode = 0;
 				$player->sendMessage($this->prefix . " Arena Registered!");
-			}
-			else
-			{
+			} else {
 				$text = $tile->getText();
 				if($text[3] == $this->prefix)
 				{
@@ -647,21 +609,16 @@ public function onShoot(EntityShootBowEvent $event)
 						$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
 						$namemap = str_replace("§f", "", $text[2]);
 						
-						$this->iswaiting[ $player->getName() ] = $namemap; //beta
-						
 						$level = $this->getServer()->getLevelByName($namemap);
-						$thespawn = $config->get($namemap . "Lobby");
+						$thespawn = $config->get($namemap . "_lobby");
 						
-						$spawn = new Position($thespawn[0]+0.5 , $thespawn[1] ,$thespawn[2]+0.5 ,$level);
+						$spawn = new Position($thespawn[0] + 0.5 , $thespawn[1], $thespawn[2] + 0.5, $level);
 						$level->loadChunk($spawn->getFloorX(), $spawn->getFloorZ());
 						
 						$player->teleport($spawn, 0, 0);
-						$player->getInventory()->clearAll();
-						$player->removeAllEffects();
 						$player->setHealth(20);
 						$player->setGameMode(2);
-						
-						$this->isprotected[ $player->getName() ] = $namemap; //beta
+						array_push($this->arenaplayers[$namemap], $player);
 						return true;
 					} else {
 						$player->sendMessage($this->prefix . " You can't join");
@@ -669,51 +626,57 @@ public function onShoot(EntityShootBowEvent $event)
 				}
 			}
 		}
-		if($this->mode >= 1 && $this->mode <= 12 )
+
+		if($this->mode >= 1 && $this->mode <= 6)
 		{
 			$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
-			$config->set($this->currentLevel . "Spawn" . $this->mode, array($block->getX(),$block->getY()+1,$block->getZ()));
-			$player->sendMessage($this->prefix . " Spawn " . $this->mode . " has been registered!");
-			$this->mode++;
-			if($this->mode == 13)
+			switch($this->mode)
 			{
-				$player->sendMessage($this->prefix . " Tap to set the lobby spawn");
+				case 1:
+					$config->set($this->currentLevel . "_red_center_spawn", array( $block->getX() , $block->getY() + 1, $block->getZ() ));
+					$player->sendMessage($this->prefix . " Red Spawn registered!, now tap for blue's spawn");
+					$this->mode++;
+				break;
+				case 2:
+					$config->set($this->currentLevel . "_blue_center_spawn", array( $block->getX() , $block->getY() + 1, $block->getZ() ));
+					$player->sendMessage($this->prefix . " Blue Spawn registered!, now tap for green's spawn");
+					$this->mode++;
+				break;
+				case 3:
+					$config->set($this->currentLevel . "_green_center_spawn", array( $block->getX() , $block->getY() + 1, $block->getZ() ));
+					$player->sendMessage($this->prefix . " Green Spawn registered!, now tap for yellow's spawn");
+					$this->mode++;
+				break;
+				case 4:
+					$config->set($this->currentLevel . "_yellow_center_spawn", array( $block->getX() , $block->getY() + 1, $block->getZ() ));
+					$player->sendMessage($this->prefix . " Yellow Spawn registered!, now tap for the arena's lobby.");
+					$this->mode++;
+				break;
+				case 5:
+					$config->set($this->currentLevel . "_lobby", array( $block->getX() ,$block->getY() + 1, $block->getZ() ));
+					$player->sendMessage($this->prefix . " Lobby has been registered!, tap anywhere to save!");
+					$this->mode++;
+				break;
+				case 6:
+					$level = $this->getServer()->getLevelByName( $this->currentLevel );
+					$level->setSpawn = (new Vector3( $block->getX(),$block->getY() + 2, $block->getZ() ));
+					
+					$spawn = $this->getServer()->getDefaultLevel()->getSafeSpawn();
+					$this->getServer()->getDefaultLevel()->loadChunk($spawn->getFloorX(), $spawn->getFloorZ());
+					$player->teleport($spawn, 0, 0);
+
+					$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
+					$config->set("arenas", $this->arenas);
+					$config->save();
+
+					$player->sendMessage($this->prefix . " Touch a sign where players can use to join.");
+					$this->mode = 101;
+				break;
 			}
-			$config->save();
-			return true;
-		}
-		if($this->mode == 13)
-		{
-			$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
-			$config->set($this->currentLevel . "Lobby", array($block->getX(),$block->getY()+1,$block->getZ()));
-			$player->sendMessage($this->prefix . " Lobby has been registered!");
-			$this->mode++;
-			if($this->mode == 14)
-			{
-				$player->sendMessage($this->prefix . " Tap anywhere to continue");
-			}
-			$config->save();
-			return true;
-		}
-		
-		if($this->mode == 14)
-		{
-			$level = $this->getServer()->getLevelByName($this->currentLevel);
-			$level->setSpawn = (new Vector3($block->getX(),$block->getY()+2,$block->getZ()));
-			$player->sendMessage($this->prefix . " Touch a sign to register Arena!");
-			$spawn = $this->getServer()->getDefaultLevel()->getSafeSpawn();
-			$this->getServer()->getDefaultLevel()->loadChunk($spawn->getFloorX(), $spawn->getFloorZ());
-			$player->teleport($spawn,0,0);
-			
-			$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
-			$config->set("arenas", $this->arenas);
-			$config->save();
-			$this->mode=26;
-			return true;
 		}
 	}
 	
-	public function sendClasses(Player $player)
+	function sendClasses(Player $player)
 	{
 		$form = $this->getServer()->getPluginManager()->getPlugin("FormAPI")->createSimpleForm(function (Player $player, array $data)
 		{
@@ -749,14 +712,14 @@ public function onShoot(EntityShootBowEvent $event)
 		$form->setTitle(" §l§fMicro Battles - Classes");
 	
 		$form->addButton("§lFighter", 1, "https://cdn3.iconfinder.com/data/icons/minecraft-icons/128/Stone_Sword.png");
-        	$form->addButton("§lMarksman", 1, "https://cdn4.iconfinder.com/data/icons/medieval-4/500/medieval-ancient-antique_16-128.png");
+        $form->addButton("§lMarksman", 1, "https://cdn4.iconfinder.com/data/icons/medieval-4/500/medieval-ancient-antique_16-128.png");
 		$form->addButton("§lMiner", 1, "https://cdn3.iconfinder.com/data/icons/minecraft-icons/128/Iron_Pickaxe.png");
 		$form->addButton("§6§lChemist", 1, "https://cdn2.iconfinder.com/data/icons/brainy-icons-science/120/0920-lab-flask04-128.png");
 		$form->addButton("§6§lBomber", 1, "https://cdn3.iconfinder.com/data/icons/minecraft-icons/128/3D_Creeper.png");
 		$form->sendToPlayer($player);
 	}
 	
-	public function refreshArenas()
+	function refreshArenas()
 	{
 		$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
 		$config->set("arenas",$this->arenas);
@@ -768,32 +731,27 @@ public function onShoot(EntityShootBowEvent $event)
 		$config->save();
 	}
 
-	public function dropitem(PlayerDropItemEvent $event)
+	function dropitem(PlayerDropItemEvent $event) : void
     {
         $player = $event->getPlayer();
-		if(in_array($player->getLevel()->getFolderName(), $this->arenas) || array_key_exists($player->getName(), $this->iswaiting))
+		if(in_array($player->getLevel()->getFolderName(), $this->arenas))
 		{
 			if ($event->getItem()->getId() == 339 && $event->getItem()->getDamage() == 69 or $event->getItem()->getDamage() == 666){
 				$event->setCancelled();
-				return true;
 			}
-			
-			$config = new Config($this->getDataFolder() . "/config.yml", Config::YAML);
-			if($config->get($level . "PlayTime") > 765)
+
+			if($this->getStatus($level) <> 1)
 			{
-				$event->setCancelled(true);
-				return true;
+				$event->setCancelled();
 			}
-			$event->setCancelled(false);
 		}
     }
 	
-	public function givePrize(Player $player)
+	function givePrize(Player $player)
 	{
-		$name = $player->getLowerCaseName();
-		$levelapi = $this->getServer()->getPluginManager()->getPlugin('CoreX2');
+		$core = $this->getServer()->getPluginManager()->getPlugin('CoreX2');
 		$xp = mt_rand(15, 21);
-		$levelapi->addVal($name, "exp", $xp);
+		$core->data->addVal($player, "exp", $xp);
 		$crate = $this->getServer()->getPluginManager()->getPlugin("CoolCrates")->getSessionManager()->getSession($player);
 		$crate->addCrateKey("common.crate", 2);
 		
@@ -804,8 +762,9 @@ public function onShoot(EntityShootBowEvent $event)
                 $button = $data[0];
                 switch ($button)
 				{
-					case 0: $this->getServer()->dispatchCommand($player, "top");
-						break;	
+					case 0: 
+						//$this->getServer()->dispatchCommand($player, "top");
+						break;
 					default: 
 						return true;
 				}
@@ -814,9 +773,9 @@ public function onShoot(EntityShootBowEvent $event)
         });
 		
 		$form->setTitle(" §l§bMicro §fBattles : PCP");
-		$rank = $levelapi->getVal($name, "rank");
-		$div = $levelapi->getVal($name, "div");
-		$resp = $levelapi->getVal($name, "respect");
+		$rank = $core->data->getVal($player, "rank");
+		$div = $core->data->getVal($player, "div");
+		$resp = $core->data->getVal($player, "respect");
 		
 		$s = "";
 		$s .= "§f Experience points: +§a".$xp."§r\n";
@@ -832,7 +791,9 @@ public function onShoot(EntityShootBowEvent $event)
 	}
 }
 
-class RefreshSigns extends Task {
+class RefreshSigns extends Task
+{
+	
     public $prefix = TextFormat::BOLD . TextFormat::DARK_GRAY . "[" . TextFormat::AQUA . "Micro" . TextFormat::GREEN . "Battles" . TextFormat::DARK_GRAY . "]" . TextFormat::RESET . TextFormat::GRAY;
 	
 	public function __construct($plugin)
@@ -875,11 +836,11 @@ class GameSender extends Task
 {
     public $prefix = TextFormat::BOLD . TextFormat::DARK_GRAY . "[" . TextFormat::AQUA . "Micro" . TextFormat::GREEN . "Battles" . TextFormat::DARK_GRAY . "]" . TextFormat::RESET . TextFormat::GRAY;
     
-	public function __construct($plugin) {
+	public function __construct($plugin)
+	{
 		$this->plugin = $plugin;
-		parent::__construct($plugin);
 	}
-        
+
     public function getResetmap() {
 		return new Resetmap($this);
     }
@@ -893,136 +854,86 @@ class GameSender extends Task
 			foreach($arenas as $arena)
 			{
 				$time = $config->get($arena . "PlayTime");
+				$mins = floor($time / 60 % 60);
+				$secs = floor($time % 60);
+				if($secs < 10)
+				{
+					$secs = "0".$secs;
+				}
 				$timeToStart = $config->get($arena . "StartTime");
 				$levelArena = $this->plugin->getServer()->getLevelByName($arena);
 				if($levelArena instanceof Level)
 				{
-					$playersArena = $levelArena->getPlayers();
-					if( count($playersArena) == 0)
+					$playersArena = $this->plugin->arenaplayers[$arena]; //$levelArena->getPlayers();
+					if(count($playersArena) == 0)
 					{
 						$config->set($arena . "PlayTime", 780);
 						$config->set($arena . "StartTime", 90);
-					}
-					else
-					{
-						if(count($playersArena) >= 2 )
+					} else {
+						if(count($playersArena) >= 2)
 						{
-							if($timeToStart>0)
+							//$this->plugin->arenastatus[$arena] = 2; //waiting
+							if($timeToStart > 0)
 							{
 								$timeToStart--;
+
 								foreach($playersArena as $pl)
 								{
-									$pl->sendPopup("§e< " . TextFormat::GREEN . $timeToStart . " seconds to start§e >");
+									$pl->sendPopup("§7< §6" . $timeToStart . " seconds to start §7>");
 								}
-									if($timeToStart==89)
-									{
-										$levelArena->setTime(7000);
-										$levelArena->stopTime();
-									}
-								if($timeToStart<=0)
+								if($timeToStart == 89)
+								{
+									$levelArena->setTime(7000);
+									$levelArena->stopTime();
+								}
+								if($timeToStart == 10)
 								{
 									$this->refillChests($levelArena);
 								}
-								$config->set($arena . "StartTime", $timeToStart);
-							}
-							else
-							{
-								$aop = count($levelArena->getPlayers());
-								$colors = array();
-								//$tages = array();
-								$reds = $this->plugin->reds;
-								$blues = $this->plugin->blues; 
-								$yellows = $this->plugin->yellows;
-								$greens = $this->plugin->greens;
 
+								$config->set($arena . "StartTime", $timeToStart);
+							} else {
+								
+								$aop = count( $levelArena->getPlayers() );
+								$teams = $this->plugin->team;
+								$activeteams = array_count_values($teams);
+								
 								if($aop >= 1)
 								{
-									if (count($reds) >= 1 && count($yellows) == 0 && count($greens) == 0 && count($blues) == 0)  //Red member
+									if(count($activeteams) == 1)
 									{
-										foreach($this->plugin->getServer()->getOnlinePlayers() as $plpl)
+										$team = $teams[ key($teams) ];
+										$this->plugin->getServer()->broadcastMessage();
+										foreach($levelArena->getPlayers() as $pl)
 										{
-											$plpl->sendMessage($this->prefix . " §l§c[RED] §r§bTeam is the Winner in the map §a" . $arena);
+											if(array_key_exists($pl->getUniqueId(), $teams))
+											{
+												$pl->removeAllEffects();
+												$pl->setHealth(20);
+												$this->plugin->leaveArena($pl);
+												$this->plugin->api->addMoney($pl, mt_rand(320, 400));//bullshit
+												$this->plugin->givePrize($pl);
+											} else {
+												$this->plugin->leaveArena($pl);
+											}
 										}
-										foreach($reds as $name => $pl)
+									} else {
+										foreach($levelArena->getPlayers() as $noob)
 										{
-											$pl->removeAllEffects();
-											$pl->setHealth(20);
-											$this->plugin->leaveArena($pl);
-											$this->plugin->api->addMoney($pl, mt_rand(320, 400));//bullshit
-											$this->plugin->givePrize($pl);
-										}
-									}
-					/*yellows*/		if (count($reds) == 0 && count($yellows)>= 1 && count($greens) == 0 && count($blues) == 0)  //Red member
-									{
-										foreach($this->plugin->getServer()->getOnlinePlayers() as $plpl)
-										{
-											$plpl->sendMessage($this->prefix . " §l§e[YELLOW] §r§bTeam is the Winner in the map §a" . $arena);
-										}
-										foreach($yellows as $name => $pl)
-										{
-											$pl->removeAllEffects();
-											$pl->setHealth(20);
-											$this->plugin->leaveArena($pl);
-											$this->plugin->api->addMoney($pl, mt_rand(320, 400));//bullshit
-											$this->plugin->givePrize($pl);
-										}
-									}
-					/*greens*/		if (count($reds) == 0 && count($yellows) == 0 && count($greens) >= 1 && count($blues) == 0)  //Red member
-									{
-										foreach($this->plugin->getServer()->getOnlinePlayers() as $plpl)
-										{
-											$plpl->sendMessage($this->plugin->prefix . " §l§a[GREEN] §r§bTeam is the Winner in the map §a" . $arena);
-										}
-										foreach($greens as $name => $pl)
-										{
-											$pl->removeAllEffects();
-											$pl->setHealth(20);
-											$this->plugin->leaveArena($pl);
-											$this->plugin->api->addMoney($pl, mt_rand(320, 400));//bullshit
-											$this->plugin->givePrize($pl);
-										}
-									}
-									if (count($reds) == 0 && count($yellows) == 0 && count($greens) == 0 && count($blues) >= 1)  //Red member
-									{
-										foreach($this->plugin->getServer()->getOnlinePlayers() as $plpl)
-										{
-											$plpl->sendMessage($this->prefix . " §l§9[BLUE] §r§bTeam is the Winner in the map §a" . $arena);
-										}
-										foreach($blues as $name => $pl)
-										{
-											$pl->removeAllEffects();
-											$pl->setHealth(20);
-											$this->plugin->leaveArena($pl);
-											$this->plugin->api->addMoney($pl, mt_rand(320, 400));//bullshit
-											$this->plugin->givePrize($pl);
+											$noob->sendTip("§lRemaining : ". $mins. ":". $secs);
+											$noob->sendPopup("§l§cRED:" . $activeteams["red"] . "  §9BLUE:" . $activeteams["blue"] . "  §aGREEN:" . $activeteams["green"] . "  §eYELLOW:" . $activeteams["yellow"] );
 										}
 									}
 								}
-								if( $aop>=2 )
-								{
-									foreach($playersArena as $pl)
-									{
-										$nametag = $pl->getNameTag();
-										array_push($colors, $nametag);
-									}
-									$names = implode("-", $colors);
-									$reds = substr_count($names, "§l§c[RED]");
-									$blues = substr_count($names, "§l§9[BLUE]");
-									$greens = substr_count($names, "§l§a[GREEN]");
-									$yellows = substr_count($names, "§l§e[YELLOW]");
-									foreach($playersArena as $pla)
-									{
-										$pla->sendPopup("§l§cRED:" . $reds . "  §9BLUE:" . $blues . "  §aGREEN:" . $greens . "  §eYELLOW:" . $yellows );
-									}
-								}
-								
+
 								$time--;
 								
 								switch($time)
 								{
 									case 779:
+										$this->plugin->arenastatus[$arena] = 3; //restricted
 										$this->plugin->assignTeam($arena);
-										foreach($playersArena as $pl)
+										foreach($levelArena->getPlayers() as $pl)
 										{
 											$pl->sendMessage("§7--------------------------------");
 											$pl->sendMessage("§e§cAttention: §6The game will start soon!");
@@ -1033,18 +944,10 @@ class GameSender extends Task
 									break;
 
 									case 765:
-										$this->plugin->removerestrictriction($arena);
-										foreach($playersArena as $pl)
+										$this->plugin->arenastatus[$arena] = 1; //playing
+										foreach($levelArena->getPlayers() as $pl)
 										{
-											$pl->addTitle("§l§aGame Start","§l§fNo PVP for §a20 §fseconds, goodluck!");
-										}
-									break;
-									
-									case 740:
-										$this->plugin->removeprotection($arena);
-										foreach($playersArena as $pl)
-										{
-											$pl->addTitle("§l§cMe§7r§ccy Time", "§f§lHas been lifted, eliminate all enemies.");
+											$pl->addTitle("§l§aGame Start","§l§fEliminate all opposing teams");
 										}
 									break;
 									
@@ -1056,41 +959,18 @@ class GameSender extends Task
 										}
 									break;
 									
-									default:
-									if($time >= 180)
-									{
-										$time2 = $time - 180;
-										$minutes = $time2 / 60;
-									} else {
-										$minutes = $time / 60;
-										if(is_int($minutes) && $minutes>0)
+									case 0:
+										$spawn = $this->plugin->getServer()->getDefaultLevel()->getSafeSpawn();
+										$this->plugin->getServer()->getDefaultLevel()->loadChunk($spawn->getX(), $spawn->getZ());
+										foreach($levelArena->getPlayers() as $pl)
 										{
-											foreach($playersArena as $pl)
-											{
-												$pl->sendMessage($this->prefix . $minutes . " minutes remaining");
-											}
+											$pl->addTitle("§lGame Over","§cGame draw in map: §a" . $arena);
+											$pl->setHealth(20);
+											$this->plugin->leaveArena($pl);
+											$this->getResetmap()->reload($levelArena);
 										}
-										if($time == 30 || $time == 15 || $time == 10 || $time ==5 || $time ==4 || $time ==3 || $time ==2 || $time == 1)
-										{
-											foreach($playersArena as $pl)
-											{
-												$pl->sendMessage($this->prefix . $time . " seconds remaining");
-											}
-										}
-										if($time <= 0)
-										{
-											$spawn = $this->plugin->getServer()->getDefaultLevel()->getSafeSpawn();
-											$this->plugin->getServer()->getDefaultLevel()->loadChunk($spawn->getX(), $spawn->getZ());
-											foreach($playersArena as $pl)
-											{
-												$pl->addTitle("§lGame Over","§cGame draw in map: §a" . $arena);
-												$pl->setHealth(20);
-												$this->plugin->leaveArena($pl);
-												$this->getResetmap()->reload($levelArena);
-											}
-											$time = 780;
-										}
-									}
+										$time = 780;
+									break;
 								}
 								$config->set($arena . "PlayTime", $time);
 							}
@@ -1099,10 +979,8 @@ class GameSender extends Task
 							{
 								foreach($playersArena as $pl)
 								{
-									foreach($this->plugin->getServer()->getOnlinePlayers() as $plpl)
-									{
-										$plpl->sendMessage($this->prefix . $pl->getNameTag() . " §r§b won in map : §a" . $arena);
-									}
+									$team = $this->plugin->team[$pl->getUniqueId()];
+									$this->plugin->getServer()->broadcastMessage("§l§a". $team. " team won in ". $arena);
 									$pl->setHealth(20);
 									$this->plugin->leaveArena($pl);
 									$this->plugin->api->addMoney($pl, mt_rand(390, 408));//bullshit

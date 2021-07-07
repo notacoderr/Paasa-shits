@@ -1,13 +1,13 @@
 name: MicroBattles
 main: LittleBigMC\MicroBattles\MicroBattles
-author: CodeBreak
-version: 2.3.3-indev
+author: CodeBreak and LentoKun
+version: 2.5
 api: [3.0.0, 3.5.2, 4.0.0]
 
 commands:
-    mb:
-        usage: /mb <leave-make>
-        description: MicroBattles-Commands
-    mbstart:
-        usage: /mbstart
-        description: MicroBattles-Force start
+  mb:
+    usage: /mb <leave-make>
+    description: MicroBattles-Commands
+  mbstart:
+    usage: /mbstart
+    description: MicroBattles-Force start
